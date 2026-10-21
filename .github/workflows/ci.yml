@@ -46,7 +46,7 @@ jobs:
       - run: uv sync --extra dev --frozen
       - name: Unit + end-to-end tests (synthetic data, CPU)
         run: uv run pytest --cov=rmitguard --cov-report=term-missing --cov-report=xml
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: matrix.python == '3.11'
         with:
           name: coverage
@@ -86,7 +86,7 @@ jobs:
           uv run python tools/build_kernel.py train configs/xlmr-large.yaml --final --username ci-check
           uv run python tools/build_kernel.py ensemble --sources ci-check/a,ci-check/b --username ci-check
           uv run python tools/build_kernel.py eda --username ci-check
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: kaggle-notebooks
           path: kaggle/build/
