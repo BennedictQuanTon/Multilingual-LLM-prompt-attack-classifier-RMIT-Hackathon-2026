@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: kaggle
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --extra dev --frozen
       - name: Build notebook
