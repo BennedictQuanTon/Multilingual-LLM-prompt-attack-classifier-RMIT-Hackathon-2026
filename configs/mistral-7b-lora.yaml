@@ -1,0 +1,15 @@
+# Biggest approved model. Mean prompt is only ~120 tokens, so one fold x 1 epoch fits in a Kaggle session
+# (~2-3 h on one T4). Screen on fold 0: worth it only if it clearly beats the best encoder on BENIGN vs JAILBREAK.
+name: mistral-7b-lora
+model: mistral-7b
+folds: [0]
+max_len: 512
+head_len: 384
+lr: 1.0e-4
+epochs: 1
+batch_size: 4
+grad_accum: 4
+warmup_ratio: 0.05
+class_weight: sqrt
+lora: {r: 16, alpha: 32, dropout: 0.05}
+time_budget_hours: 11.0

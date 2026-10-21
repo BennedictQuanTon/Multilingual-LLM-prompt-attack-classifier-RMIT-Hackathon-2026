@@ -43,9 +43,20 @@ def test_teammates_fold_subsets_merge_into_full_run(data_dir, tmp_path):
     ensemble([tmp_path], tmp_path / "ens2", data_dir=str(data_dir))
 
 
+def test_seed_variant_shares_split_and_merges(data_dir, tmp_path):
+    run_experiment(ExperimentConfig(name="s42", model="tfidf", n_folds=3), str(data_dir), tmp_path)
+    run_experiment(ExperimentConfig(name="s7", model="tfidf", n_folds=3, seed=7), str(data_dir), tmp_path)
+    meta = json.loads(
+        (ensemble([tmp_path], tmp_path / "ens", data_dir=str(data_dir)) / "meta.json").read_text()
+    )
+    assert set(meta["members"]) == {"s42", "s7"}
+
+
 def test_ensemble_refuses_mixed_splits(data_dir, tmp_path):
     run_experiment(ExperimentConfig(name="a", model="tfidf", n_folds=3), str(data_dir), tmp_path)
-    run_experiment(ExperimentConfig(name="b", model="tfidf", n_folds=3, seed=7), str(data_dir), tmp_path)
+    run_experiment(
+        ExperimentConfig(name="b", model="tfidf", n_folds=3, split_seed=7), str(data_dir), tmp_path
+    )
     with pytest.raises(ValueError, match="different CV splits"):
         ensemble([tmp_path], tmp_path / "ens", data_dir=str(data_dir))
 

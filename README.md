@@ -1,62 +1,74 @@
-# Team GenData — RMIT Hackathon 2026
+# RMIT Hackathon 2026 — Team GenData
 
 [![CI](https://github.com/BennedictQuanTon/Team-GenData-RMIT-Hackathon-2026/actions/workflows/ci.yml/badge.svg)](https://github.com/BennedictQuanTon/Team-GenData-RMIT-Hackathon-2026/actions/workflows/ci.yml)
 
-**Challenge 1 — Multilingual prompt-attack classification** ([Kaggle](https://www.kaggle.com/competitions/rmit-hackathon-2026)):
-phân loại prompt tiếng pt / fr / it / en thành `BENIGN`, `JAILBREAK`, `PROMPT_INJECTION`. Thước đo: **macro F1**.
-Deadline **22/10/2026 18:00 giờ VN** (11:00 UTC) · 6 lượt nộp/ngày · chỉ được dùng **1 backbone** trong danh sách BTC duyệt.
+**RMIT GenAI & Cybersecurity Hackathon 2026** — *Security × Generative AI × Low-Resource Languages*.
+Tổ chức 22–23/10/2026 tại Australia, Việt Nam và Malaysia. Đơn vị tham gia cùng RMIT: Taylor's University, Tide, Design Village, Katalon.
 
-| tài liệu | nội dung |
+## Cuộc thi
+
+Hackathon gồm nhiều challenge. **Challenge 1** chạy trên Kaggle với leaderboard; các challenge còn lại chạy trên **RMIT RACE Cloud**.
+
+| | |
 |---|---|
-| [docs/PROBLEM.md](docs/PROBLEM.md) | đề bài, dữ liệu, luật, leaderboard hiện tại |
-| [docs/PLAN.md](docs/PLAN.md) | **kế hoạch thi**: hướng tiếp cận, timeline, phân vai, rủi ro |
+| Trang thi | https://www.kaggle.com/competitions/rmit-hackathon-2026 |
+| Website | https://rmit-hackathon.com/ |
+| Host | Bowen (Kaggle: `aisuko`) · notebook mẫu: [RMIT_SGS_demo_C1](https://www.kaggle.com/code/aisuko/rmit-sgs-demo-c1) |
+| Hạn nộp Challenge 1 | **22/10/2026 18:00 giờ Việt Nam** (11:00 UTC) |
+| Giải | Kudos (không có điểm / huy chương Kaggle) |
+
+## Challenge 1 — Multilingual Protector Model
+
+Đóng vai **AI Protector**: đọc một prompt gửi tới LLM và quyết định nó là
+
+| nhãn | ý nghĩa | tỉ lệ train |
+|---|---|---|
+| `BENIGN` | yêu cầu bình thường, an toàn | 62% |
+| `JAILBREAK` | cố thuyết phục model bỏ luật an toàn (nhập vai, "DAN", "developer mode"…) | 31% |
+| `PROMPT_INJECTION` | cố chiếm quyền chỉ dẫn của model ("ignore previous instructions", lộ system prompt…) | 7% |
+
+**Vì sao khó:** prompt viết bằng **tiếng Bồ Đào Nha, Pháp, Ý** (và một phần tiếng Anh). Các ngôn ngữ này giàu tài nguyên cho NLP nói chung
+nhưng **nghèo tài nguyên cho AI safety**: hầu hết dataset prompt injection / guardrail được xây cho tiếng Anh,
+nên bộ lọc an toàn hay bỏ lọt tấn công viết bằng ngôn ngữ khác. Mục tiêu của đề là lấp khoảng trống đó.
+
+### Dữ liệu
+
+| file | số dòng | cột |
+|---|---|---|
+| `train.csv` | 14.000 | `id`, `text`, `language`, `label` |
+| `test.csv` | 6.000 | `id`, `text`, `language` |
+| `sample_submission.csv` | 6.000 | `id`, `label` |
+
+`language` ∈ {`pt`, `fr`, `it`, `en`}; `text` dài 10–18.550 ký tự. Giấy phép dữ liệu CC BY-NC-SA 4.0.
+
+### Đánh giá
+
+**Macro F1**: F1 tính riêng cho từng lớp rồi lấy trung bình không trọng số, nên lớp hiếm `PROMPT_INJECTION` nặng ngang `BENIGN`.
+Đoán toàn `BENIGN` được ~0.26, hoàn hảo là 1.0. Public leaderboard chấm 30% test, private leaderboard (quyết định thứ hạng) chấm 70% còn lại.
+
+File nộp: đúng 6.000 dòng + header.
+
+```
+id,label
+t000006,BENIGN
+t000007,PROMPT_INJECTION
+t000008,JAILBREAK
+```
+
+### Luật chính
+
+- Fine-tune **một** model trong danh sách được duyệt (XLM-RoBERTa base/large, mmBERT small/base, DistilBERT multilingual, RemBERT,
+  DeBERTa-v3 prompt-injection-v2, Wolf Defender, Granite 3.3 2B Instruct, Mistral 7B Instruct v0.3); không dùng backbone pretrained nào khác.
+- Ghi tên model đã chọn ở đầu notebook; notebook đặt tên `<university>_<campus>_<team>_C1` → của team: **`RMIT_SGS_GenData_C1`**.
+- 6 lượt nộp mỗi ngày, team tối đa 4 người. Có điểm Challenge 1 ngay khi có submission hợp lệ đầu tiên.
+
+## Tài liệu của team
+
+| | |
+|---|---|
+| [Plan.md](Plan.md) | **tình hình, luật, chiến lược, việc từng người tối nay và ngày thi** |
+| [docs/PROBLEM.md](docs/PROBLEM.md) | đề bài chi tiết |
 | [docs/WORKFLOW.md](docs/WORKFLOW.md) | cách chạy local / Kaggle / ensemble / nộp bài / CI |
-| [experiments/LOG.md](experiments/LOG.md) | nhật ký thí nghiệm của team |
+| [experiments/LOG.md](experiments/LOG.md) | nhật ký thí nghiệm |
 
-## Bắt đầu nhanh
-
-```bash
-make setup                                   # uv env (Python 3.11) + pre-commit
-make data && make eda && make baseline       # cần Join competition + ~/.kaggle/kaggle.json
-make push CONFIG=configs/xlmr-large.yaml FOLDS=0   # chạy fold 0 trên Kaggle T4×2
-make help                                    # mọi lệnh
-```
-
-## Pipeline
-
-1. **Split** — 5-fold `StratifiedGroupKFold` theo *label × language*, prompt trùng nhau luôn chung fold; fingerprint của split
-   đảm bảo mọi run của mọi thành viên ghép được với nhau.
-2. **Model** — fine-tune 1 backbone được duyệt (`AutoModelForSequenceClassification`, 3 lớp), cắt đầu + đuôi cho prompt dài,
-   cross-entropy có trọng số lớp; đường LLM dùng 4-bit + LoRA + đầu phân loại.
-3. **Quyết định** — offset log-prob theo lớp tối ưu macro F1 trên OOF (đánh giá trung thực bằng cross-fit).
-4. **Ensemble** — trung bình fold / seed / config của cùng backbone; artifact lưu sau mỗi fold.
-5. **Nộp** — notebook `RMIT_SGS_GenData_C1` build từ git; `tools/submit.py` validate + log mọi lượt nộp.
-
-## Cấu trúc
-
-```
-configs/                 1 file YAML = 1 thí nghiệm (model, lr, epochs, max_len, folds…)
-src/rmitguard/
-  constants.py           nhãn, danh sách model được duyệt + handle Kaggle
-  config.py              ExperimentConfig (bắt lỗi gõ sai key, model không được duyệt)
-  data.py                load, chuẩn hoá, fold + fingerprint
-  models/tfidf.py        baseline CPU (chỉ để chẩn đoán)
-  models/transformer.py  encoder full fine-tune / LLM QLoRA, Trainer có class weight
-  postprocess.py         offset theo lớp cho macro F1
-  runner.py              K-fold → oof.npy, test.npy, report.md, submission.csv
-  ensemble.py            ghép fold subset / nhiều run (kiểm tra split + luật 1 backbone)
-  eda.py, metrics.py, submission.py, cli.py
-tools/
-  build_kernel.py        repo → notebook Kaggle tự chứa + kernel-metadata.json
-  submit.py              nộp bài có kiểm tra (validate, đếm lượt, log)
-  smoke_transformer.py   chạy thật HF Trainer với XLM-R tí hon trên CPU (CI)
-kaggle/team.yaml         university / campus / team cho tên notebook
-tests/                   pytest trên dữ liệu tổng hợp (không cần data thật)
-.github/                 CI, push/submit Kaggle, template issue/PR
-```
-
-## Quy ước
-
-- Không commit dữ liệu cuộc thi (CC BY-NC-SA), trọng số, `kaggle.json` — pre-commit và CI chặn.
-- Repo để **Private** đến hết cuộc thi (luật Kaggle cấm chia sẻ code ngoài team).
-- So sánh thí nghiệm bằng **CV cross-fitted**, không bằng public LB (chỉ 30% test).
+Bắt đầu: `make setup` → `make data` → `make baseline` → `make help`.

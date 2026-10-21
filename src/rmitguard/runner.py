@@ -114,9 +114,9 @@ def run_experiment(
     t_start = time.time()
     data = load_competition(data_dir)
     if limit:
-        data = subsample(data, limit, cfg.seed)
+        data = subsample(data, limit, cfg.split_seed)
     train, test, y = data.train, data.test, data.y
-    folds = make_folds(train, cfg.n_folds, cfg.seed)
+    folds = make_folds(train, cfg.n_folds, cfg.split_seed)
     split_fp = split_fingerprint(folds)
     language = train["language"].astype(str).to_numpy()
 

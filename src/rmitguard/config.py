@@ -16,7 +16,8 @@ from .constants import APPROVED_MODELS
 class ExperimentConfig:
     name: str
     model: str  # key of APPROVED_MODELS, or "tfidf" (local diagnostic only, not an approved backbone)
-    seed: int = 42
+    seed: int = 42  # training seed: change it for extra ensemble members
+    split_seed: int = 42  # CV split: keep it fixed so every run of the team can be merged
     n_folds: int = 5
     folds: list[int] | None = None  # None = all folds; a subset lets teammates split the work
     # Tokenisation: long prompts keep head + tail (role-play set-up at the start, real request at the end).
