@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --extra dev --frozen
+      - name: Ruff lint
+        run: uv run ruff check --output-format=github .
+      - name: Ruff format
+        run: uv run ruff format --check .
+      - name: No competition data / secrets committed
+        run: |
+          bad=$(git ls-files | grep -E '(^|/)(train|test|sample_submission)\.csv$|kaggle\.json$|\.npy$|\.safetensors$' || true)
+          if [ -n "$bad" ]; then echo "::error::forbidden files tracked:"; echo "$bad"; exit 1; fi
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: ${{ matrix.python }}
+      - run: uv sync --extra dev --frozen
+      - name: Unit + end-to-end tests (synthetic data, CPU)
+        run: uv run pytest --cov=rmitguard --cov-report=term-missing --cov-report=xml
+      - uses: actions/upload-artifact@v4
+        if: matrix.python == '3.11'
+        with:
+          name: coverage
+          path: coverage.xml
+
+  transformer-smoke:
+    # Runs the real Hugging Face Trainer path (tiny random XLM-R, CPU) so a broken training loop is caught
+    # before anyone spends Kaggle GPU hours on it.
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --extra dev --frozen
+      - name: Install CPU torch + transformers
+        run: uv pip install torch --index-url https://download.pytorch.org/whl/cpu && uv pip install "transformers>=4.48" datasets accelerate sentencepiece
+      - name: Tiny transformer CV run
+        run: uv run --no-sync python tools/smoke_transformer.py
+
+  kaggle-notebooks:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --extra dev --frozen
+      - name: Build every Kaggle notebook
+        run: |
+          for cfg in configs/*.yaml; do
+            [ "$(basename "$cfg")" = "tfidf.yaml" ] && continue
+            uv run python tools/build_kernel.py train "$cfg" --username ci-check
+          done
+          uv run python tools/build_kernel.py train configs/xlmr-large.yaml --final --username ci-check
+          uv run python tools/build_kernel.py ensemble --sources ci-check/a,ci-check/b --username ci-check
+          uv run python tools/build_kernel.py eda --username ci-check
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kaggle-notebooks
+          path: kaggle/build/

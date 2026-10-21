@@ -1,0 +1,36 @@
+# --- competition data: CC BY-NC-SA, never commit (also checked in CI) ---
+data/
+*.csv
+!experiments/*.csv
+kaggle.json
+
+# --- run outputs ---
+artifacts/
+outputs/
+reports/
+kaggle/build/
+*.npy
+*.npz
+*.safetensors
+*.bin
+*.pt
+wandb/
+tmp_*/
+
+# --- python ---
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+*.egg-info/
+dist/
+build/
+.ipynb_checkpoints/
+
+# --- OS / editors ---
+.DS_Store
+.idea/
+.vscode/

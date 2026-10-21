@@ -1,0 +1,8 @@
+# Notebook naming rule: <university>_<campus>_<team>_C<challenge>
+#   university / campus: letters only · team: letters, digits, _ and -
+# Final submission notebook = RMIT_SGS_GenData_C1. Experiment notebooks append "-<experiment>" to the team part,
+# which still satisfies the rule (e.g. RMIT_SGS_GenData-xlmr-large_C1).
+university: RMIT
+campus: SGS
+team: GenData
+challenge: 1

@@ -1,0 +1,47 @@
+name: Kaggle — submit notebook output
+
+# Spends one of the 6 daily submissions. Protected by the `kaggle` environment (add required reviewers in
+# Settings → Environments so a second teammate approves every submission) and by a typed confirmation.
+
+on:
+  workflow_dispatch:
+    inputs:
+      kernel:
+        description: owner/slug of the notebook, e.g. bennedict/rmit-sgs-gendata-c1
+        required: true
+      version:
+        description: kernel version number (empty = latest)
+        default: ""
+      message:
+        description: "submission message: experiment, CV macro F1, folds"
+        required: true
+      confirm:
+        description: type SUBMIT to spend a submission
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    if: inputs.confirm == 'SUBMIT'
+    runs-on: ubuntu-latest
+    environment: kaggle
+    env:
+      KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+      KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --extra dev --frozen
+      - name: Validate + submit
+        env:
+          KERNEL: ${{ inputs.kernel }}
+          VERSION: ${{ inputs.version }}
+          MESSAGE: ${{ inputs.message }}
+        run: |
+          args=(--kernel "$KERNEL" -m "$MESSAGE [${GITHUB_SHA::7}]" --yes)
+          [ -n "$VERSION" ] && args+=(--version "$VERSION")
+          uv run python tools/submit.py "${args[@]}"
+      - name: Recent submissions
+        run: uv run kaggle competitions submissions rmit-hackathon-2026 | head -12 >> "$GITHUB_STEP_SUMMARY"

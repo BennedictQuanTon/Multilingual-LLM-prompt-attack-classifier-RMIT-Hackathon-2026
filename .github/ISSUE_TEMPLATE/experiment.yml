@@ -1,0 +1,32 @@
+name: Experiment
+description: One idea = one issue. Fill in the result so the team can decide fast.
+title: "[exp] "
+labels: [experiment]
+body:
+  - type: textarea
+    id: hypothesis
+    attributes:
+      label: Hypothesis
+      description: What do you change and why should it raise macro F1?
+      placeholder: "xlmr-large with max_len 512 beats xlmr-base because long jailbreaks get truncated at 256"
+    validations:
+      required: true
+  - type: input
+    id: config
+    attributes:
+      label: Config file
+      placeholder: configs/xlmr-large.yaml
+  - type: input
+    id: kernel
+    attributes:
+      label: Kaggle notebook (owner/slug + version)
+  - type: textarea
+    id: result
+    attributes:
+      label: Result (from report.md)
+      description: cross-fitted macro F1, per-class F1, per-language table, minutes per fold
+  - type: dropdown
+    id: decision
+    attributes:
+      label: Decision
+      options: [pending, keep, drop, submit]

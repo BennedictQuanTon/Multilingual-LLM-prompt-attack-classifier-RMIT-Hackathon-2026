@@ -1,0 +1,10 @@
+# Main candidate. ModernBERT architecture, 1800+ languages, long context: keep more of the long jailbreaks.
+name: mmbert-base
+model: mmbert-base
+max_len: 1024
+head_len: 768
+lr: 3.0e-5
+epochs: 3
+batch_size: 8
+grad_accum: 2
+class_weight: sqrt

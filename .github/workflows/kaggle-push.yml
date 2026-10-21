@@ -1,0 +1,73 @@
+name: Kaggle — push & run notebook
+
+# Builds a notebook from the repo at this commit and starts it on Kaggle (T4 x2).
+# Needs repository secrets KAGGLE_USERNAME and KAGGLE_KEY (Settings → Secrets → Actions).
+# The kernel runs under that account; its GPU quota is the one being spent.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: train | ensemble | eda
+        type: choice
+        options: [train, ensemble, eda]
+        default: train
+      config:
+        description: experiment config (train mode)
+        default: configs/xlmr-large.yaml
+      folds:
+        description: fold subset, e.g. 0,1 (empty = all)
+        default: ""
+      sources:
+        description: ensemble mode — comma-separated kernel refs to merge
+        default: ""
+      final:
+        description: use the official notebook name RMIT_SGS_GenData_C1
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    environment: kaggle
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --extra dev --frozen
+      - name: Build notebook
+        id: build
+        env:
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          MODE: ${{ inputs.mode }}
+          CONFIG: ${{ inputs.config }}
+          FOLDS: ${{ inputs.folds }}
+          SOURCES: ${{ inputs.sources }}
+          FINAL: ${{ inputs.final }}
+        run: |
+          args=("$MODE")
+          [ "$MODE" = "train" ] && args+=("$CONFIG")
+          [ -n "$FOLDS" ] && args+=(--folds "$FOLDS")
+          [ -n "$SOURCES" ] && args+=(--sources "$SOURCES")
+          [ "$FINAL" = "true" ] && args+=(--final)
+          out=$(uv run python tools/build_kernel.py "${args[@]}")
+          echo "$out"
+          echo "dir=$(echo "$out" | awk '/^built/{print $2}')" >> "$GITHUB_OUTPUT"
+      - name: Push to Kaggle (starts the run)
+        env:
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+          DIR: ${{ steps.build.outputs.dir }}
+        run: uv run kaggle kernels push -p "$DIR"
+      - name: Summary
+        env:
+          DIR: ${{ steps.build.outputs.dir }}
+        run: |
+          id=$(jq -r .id "$DIR/kernel-metadata.json")
+          {
+            echo "### Pushed \`$id\` from \`${GITHUB_SHA::7}\`"
+            echo "- https://www.kaggle.com/code/$id"
+            echo "- status: \`make status KERNEL=$id\` · output: \`make output KERNEL=$id\`"
+          } >> "$GITHUB_STEP_SUMMARY"

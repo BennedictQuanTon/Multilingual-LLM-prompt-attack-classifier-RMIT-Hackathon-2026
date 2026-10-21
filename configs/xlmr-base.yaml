@@ -1,0 +1,10 @@
+# First valid submission (secures Challenge 1 marks) + reference point. ~10 min/fold on T4 x2.
+name: xlmr-base
+model: xlmr-base
+max_len: 512
+head_len: 384
+lr: 2.0e-5
+epochs: 3
+batch_size: 16
+grad_accum: 1
+class_weight: sqrt

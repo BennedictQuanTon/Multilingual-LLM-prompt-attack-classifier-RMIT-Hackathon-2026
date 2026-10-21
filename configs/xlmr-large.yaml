@@ -1,0 +1,12 @@
+# Main candidate. Strongest multilingual encoder on the list. ~30 min/fold on T4 x2.
+# If loss stays flat at ~1.0 in epoch 1 (XLM-R large sometimes fails to start), lower lr to 8e-6 and re-run.
+name: xlmr-large
+model: xlmr-large
+max_len: 512
+head_len: 384
+lr: 1.0e-5
+epochs: 3
+batch_size: 8
+grad_accum: 2
+warmup_ratio: 0.1
+class_weight: sqrt

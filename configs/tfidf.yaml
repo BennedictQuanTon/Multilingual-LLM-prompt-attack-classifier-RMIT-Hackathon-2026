@@ -1,0 +1,5 @@
+# Local CPU sanity check (~2 min). NOT an approved backbone: never submit it, use it as the CV floor.
+name: tfidf
+model: tfidf
+class_weight: balanced
+tfidf: {C: 8.0}
