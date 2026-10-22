@@ -5,6 +5,60 @@
 
 ---
 
+## ★ KẾ HOẠCH ĐIỂM CAO NHẤT (chốt 08:55, 22/10)
+
+**Bản nộp cuối = ensemble `mmbert-base`, mỗi thành phần đủ 5 fold:**
+
+| thành phần | fold 0 | fold 1–4 | trạng thái |
+|---|---|---|---|
+| `mmbert-base` (seed 42) | ✅ `bench-a` | ⏳ `s1` | ~09:00–09:45 |
+| `mmbert-base-s2` (seed 7) | ✅ | ✅ `s2` | **xong** — CV 0.9631 |
+| `mmbert-base-s3` (seed 13) | ⏳ `s3` | ⏳ `s3` | ~10:00 (chạy cạnh Mistral) |
+| `mmbert-base-cw0` | ✅ `s2` | ⏳ `s5` | ~10:30–11:00 |
+| `mmbert-base-ls` | ✅ `s2` | ⏳ `s5` | ~10:30–11:00 |
+| `mmbert-base-lang` | ✅ `s2` | ⏳ `s5` | ~10:30–11:00 |
+
+Kỳ vọng: CV cross-fit **~0.966–0.970** (1 model 5 fold: 0.963; top public LB lúc 20:00 hôm qua: 0.972).
+
+**Lịch nộp** (mỗi lượt kèm CV trong message):
+| # | khi nào | nội dung | lý do |
+|---|---|---|---|
+| 1 | ngay khi lead đồng ý | baseline `mmbert-base` fold 0 (`submissions/01_…`) | chắc điểm C1, mốc CV ↔ LB |
+| 2 | khi `s1` xong (~09:45) | v1 = `mmbert-base` 5 fold | |
+| 3 | ~10:30 | base + seed 2 + seed 3 (15 model) | |
+| 4 | ~11:15 | **6 thành phần × 5 fold (30 model)** | ứng viên chính |
+| 5 | sau 13:00 | (tuỳ) bản ứng viên chính + chỉnh theo kết quả holdout / LLM | |
+| 6 | 16:30 | dự phòng | |
+
+**Quyết định còn chờ:**
+- **LLM:** chỉ đổi sang Granite/Mistral nếu fold 0 của nó ≥ **0.970** (≥ ensemble mmBERT kỳ vọng), vì đổi backbone thì mất toàn bộ ensemble mmBERT.
+- **Hỏi BTC** về ghép nhiều backbone: nếu được, thêm `mmbert-small` (0.959, PI tốt nhất) và `wolf-defender` (0.961) vào ensemble.
+- Chọn 2 bản cuối lúc 17:00 theo **CV cross-fit**, không theo public LB.
+
+
+### ★ Việc cho 2 thành viên (B, C) — thêm thành phần cho ensemble (sáng 22/10)
+
+Mỗi tài khoản Kaggle chạy được **2 phiên cùng lúc**, mỗi phiên 2 GPU → mỗi người chạy **2 thành phần**, mỗi thành phần = 5 fold, ~40 phút.
+Tất cả là `mmbert-base` (cùng backbone, cùng split `10a79e50dde8`) ⇒ ghép thẳng vào ensemble chính.
+
+**Một lần (10 phút):** Join competition + nhận lời mời team · xác minh số điện thoại Kaggle · `git pull` · `make setup` ·
+`~/.kaggle/kaggle.json` của chính mình (`chmod 600`). Không cần `make data` — Kaggle tự gắn dữ liệu.
+
+| người | phiên | thành phần | lệnh (chạy ở thư mục repo) |
+|---|---|---|---|
+| B | 1 | `mmbert-base-lang-s2` (nhãn ngôn ngữ, seed 7) | `uv run python tools/build_kernel.py bench configs/sweep/mmbert-base-lang-s2.yaml@0,1,2 configs/sweep/mmbert-base-lang-s2.yaml@3,4 --tag b1-lang-s2 && uv run kaggle kernels push -p kaggle/build/rmit-sgs-gendata-b1-lang-s2-c1 -t 3600` |
+| B | 2 | `mmbert-base-cw0-s2` (không trọng số lớp, seed 7) | `uv run python tools/build_kernel.py bench configs/sweep/mmbert-base-cw0-s2.yaml@0,1,2 configs/sweep/mmbert-base-cw0-s2.yaml@3,4 --tag b2-cw0-s2 && uv run kaggle kernels push -p kaggle/build/rmit-sgs-gendata-b2-cw0-s2-c1 -t 3600` |
+| C | 1 | `mmbert-base-ls-s2` (label smoothing, seed 7) | `uv run python tools/build_kernel.py bench configs/sweep/mmbert-base-ls-s2.yaml@0,1,2 configs/sweep/mmbert-base-ls-s2.yaml@3,4 --tag c1-ls-s2 && uv run kaggle kernels push -p kaggle/build/rmit-sgs-gendata-c1-ls-s2-c1 -t 3600` |
+| C | 2 | `mmbert-base-s4` (gốc, seed 21) | `uv run python tools/build_kernel.py bench configs/sweep/mmbert-base-s4.yaml@0,1,2 configs/sweep/mmbert-base-s4.yaml@3,4 --tag c2-s4 && uv run kaggle kernels push -p kaggle/build/rmit-sgs-gendata-c2-s4-c1 -t 3600` |
+
+**Khi xong (~40–50 phút):**
+1. Mở notebook trên Kaggle → kiểm tra cell cuối in `rc=0` cho cả 2 job.
+2. *Share* → thêm **`longquanton`** (quyền xem) → nhắn lead slug notebook (`<username>/rmit-sgs-gendata-<tag>-c1`).
+3. Lead: `make output KERNEL=<username>/rmit-sgs-gendata-<tag>-c1` → `uv run python tools/collect_experiments.py` → ghép.
+
+**Không nộp bài** từ tài khoản thành viên. Nếu notebook *running* quá 1 giờ: `-t 3600` sẽ tự dừng nó (output vẫn được giữ).
+
+
 ## 0. Đã làm gì (21/10, 20:00 → nay)
 
 ### 0.1 Tóm tắt một dòng
@@ -156,6 +210,32 @@ So với `mmbert-base` (cùng kiến trúc, chưa học prompt injection): khở
    Đợt `tune` đã được đổi sang: `-ls` (label smoothing 0.1), `-ep2` (2 epoch), `-lang` (nhãn ngôn ngữ), `-cw0` (bỏ trọng số lớp).
 5. Chỉnh offset giúp +0.003–0.004 cho mọi model → luôn bật.
 6. Encoder base chạy **11–16 phút/fold trên 1 T4** → 5 fold ≈ 1 giờ trên 1 GPU, ≈ 30 phút nếu chia 2 GPU.
+
+### 1.4 Tune `mmbert-base` (fold 0, sáng 22/10, phiên `s2`) — không biến thể nào thắng khi đứng một mình
+
+| biến thể | thay đổi | macro F1 | pt J | en PI | val−train loss |
+|---|---|---|---|---|---|
+| `-lang` | thêm `[pt]`/`[fr]`… vào đầu prompt | 0.9650 | 0.914 | **0.919** | 0.246 |
+| *gốc* | lr 3e-5, 3 epoch, trọng số `sqrt` | *0.9649* | ***0.917*** | *0.857* | *0.235* |
+| `-cw0` | bỏ trọng số lớp (chỉ dùng offset) | 0.9628 | 0.903 | 0.895 | 0.250 |
+| `-ep2` | 2 epoch | 0.9610 | 0.893 | 0.889 | 0.157 |
+| `-ls` | label smoothing 0.1 | 0.9577 | 0.888 | 0.865 | **0.096** |
+
+- Không biến thể nào vượt gốc ≥ 0.003 → **config gốc đã gần tối ưu**; chênh giữa các run ~±0.003 là nhiễu.
+- `-ls` giảm overfit rõ (val−train loss 0.235 → 0.096) nhưng điểm thấp hơn; `-lang` cải thiện mạnh **PI tiếng Anh** (0.857 → 0.919).
+- **Seed 2 đủ 5 fold:** OOF 14.000 dòng **cross-fit 0.9631** (argmax 0.9649) → mức trung thực của *một* model `mmbert-base` 5 fold ≈ **0.963**.
+
+### 1.5 Ghép nhiều run cùng backbone — **nguồn tăng điểm lớn nhất** (fold 0, 6 run họ `mmbert-base`)
+
+| ghép | macro F1 cross-fit |
+|---|---|
+| 1 run đơn lẻ | 0.960 – 0.9635 |
+| base + seed 2 + `-lang` | 0.9667 |
+| **cả 6 run** | **0.9665** |
+| base + `-cw0` + `-ls` + seed 2 | **0.9694** (tốt nhất trong 63 tổ hợp → có phần may mắn khi chọn) |
+
+→ **Ghép +0.005 – +0.008**, và các biến thể *yếu khi đứng riêng* (`-ls`, `-cw0`) lại **đóng góp khi ghép** vì sai ở chỗ khác nhau.
+Mọi thành phần đều là `mmbert-base` → **hợp lệ với luật 1 backbone**.
 
 ## 2. Tình hình hiện tại
 

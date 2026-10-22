@@ -1,0 +1,112 @@
+{
+  "name": "mmbert-base-s2-5fold",
+  "model": "mmbert-base",
+  "members": {
+    "mmbert-base-s2": {
+      "weight": 1.0,
+      "folds_done": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "model": "mmbert-base",
+      "sources": [
+        "outputs/rmit-sgs-gendata-s2-seed-tune-c1/artifacts/mmbert-base-s2-f012/mmbert-base-s2",
+        "outputs/rmit-sgs-gendata-s2-seed-tune-c1/artifacts/mmbert-base-s2-f34/mmbert-base-s2"
+      ]
+    }
+  },
+  "split_fp": "10a79e50dde8",
+  "n_train": 14000,
+  "n_test": 6000,
+  "scores": {
+    "coverage": 1.0,
+    "macro_f1_argmax": 0.9649392437041561,
+    "macro_f1_tuned": 0.9657430974055852,
+    "bias": [
+      0.0,
+      -0.45,
+      1.05
+    ],
+    "public_lb_ci95": [
+      0.9540259278234429,
+      0.9754576926966939
+    ],
+    "per_class": {
+      "precision": {
+        "BENIGN": 0.97557,
+        "JAILBREAK": 0.95593,
+        "PROMPT_INJECTION": 0.97101
+      },
+      "recall": {
+        "BENIGN": 0.97523,
+        "JAILBREAK": 0.95968,
+        "PROMPT_INJECTION": 0.95714
+      },
+      "f1": {
+        "BENIGN": 0.9754,
+        "JAILBREAK": 0.9578,
+        "PROMPT_INJECTION": 0.96403
+      },
+      "support": {
+        "BENIGN": 8680,
+        "JAILBREAK": 4340,
+        "PROMPT_INJECTION": 980
+      }
+    },
+    "per_language": {
+      "n": {
+        "en": 1400,
+        "fr": 3500,
+        "it": 2800,
+        "pt": 6300
+      },
+      "macro_f1": {
+        "en": 0.97678,
+        "fr": 0.97354,
+        "it": 0.97801,
+        "pt": 0.95349
+      },
+      "f1_BENIGN": {
+        "en": 0.99253,
+        "fr": 0.98941,
+        "it": 0.99078,
+        "pt": 0.95693
+      },
+      "f1_JAILBREAK": {
+        "en": 0.99539,
+        "fr": 0.99126,
+        "it": 0.99134,
+        "pt": 0.91609
+      },
+      "f1_PROMPT_INJECTION": {
+        "en": 0.94241,
+        "fr": 0.93996,
+        "it": 0.9519,
+        "pt": 0.98746
+      }
+    },
+    "confusion": {
+      "pred_BENIGN": {
+        "true_BENIGN": 8465,
+        "true_JAILBREAK": 173,
+        "true_PROMPT_INJECTION": 39
+      },
+      "pred_JAILBREAK": {
+        "true_BENIGN": 189,
+        "true_JAILBREAK": 4165,
+        "true_PROMPT_INJECTION": 3
+      },
+      "pred_PROMPT_INJECTION": {
+        "true_BENIGN": 26,
+        "true_JAILBREAK": 2,
+        "true_PROMPT_INJECTION": 938
+      }
+    },
+    "macro_f1_tuned_crossfit": 0.963068782644868
+  },
+  "holdout": null,
+  "updated_at": "2026-10-22T01:47:06+00:00"
+}

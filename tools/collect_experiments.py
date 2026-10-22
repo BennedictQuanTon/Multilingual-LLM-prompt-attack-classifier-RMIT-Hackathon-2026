@@ -38,15 +38,28 @@ STAGES = {
 DEBUG = {"xlmr-large-f0": "xlmr-large", "mmbert-base-f0": "mmbert-base", "wolf-defender-f0": "wolf-defender"}
 
 
+TUNE_SUFFIXES = ("-ls", "-lang", "-cw0", "-ep2", "-ep", "-lr")
+
+
 def stage_of(run_dir: Path) -> str | None:
+    """Classify a run by what it is (not by which notebook produced it)."""
     rel = run_dir.relative_to(ROOT).as_posix()
     if rel.startswith("artifacts/"):
         return "01-tfidf-baseline"
-    slug = rel.split("/")[1]  # outputs/<slug>/...
-    tag = slug.removeprefix("rmit-sgs-gendata-").removesuffix("-c1")
+    tag = rel.split("/")[1].removeprefix("rmit-sgs-gendata-").removesuffix("-c1")
     if tag in DEBUG:
         return "02-pipeline-debug"
-    return STAGES.get(tag)
+    meta = json.loads((run_dir / "meta.json").read_text())
+    name = meta["name"]
+    if meta.get("holdout"):
+        return "06-holdout"
+    if name.startswith(("granite", "mistral")):
+        return "05-llm-fold0"
+    if name.endswith(TUNE_SUFFIXES):
+        return "04-tune-fold0"
+    if meta.get("folds_done") == [0] and meta.get("split_fp") == FULL_SPLIT and tag.startswith("bench"):
+        return "03-bench-fold0"
+    return "08-fold-runs"  # fold subsets of v1 / seeds; merged in 07-v1 and 09-ensembles
 
 
 def copy_run(run_dir: Path, dest: Path, health_only: bool = False) -> None:
@@ -165,7 +178,7 @@ def main() -> None:
 
     # holdout: merge the fold subsets that ran on the two GPUs
     if "06-holdout" in by_stage:
-        ens = ensemble([p.parent for p in by_stage["06-holdout"]], EXP / "06-holdout" / "merged")
+        ens = ensemble(by_stage["06-holdout"], EXP / "06-holdout" / "merged")
         plot_run(ens)
         for f in (ens / "charts").glob("*.png"):
             shutil.copy(f, ens / f.name)

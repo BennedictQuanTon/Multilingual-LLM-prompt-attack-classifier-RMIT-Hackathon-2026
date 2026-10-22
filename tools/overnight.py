@@ -132,7 +132,18 @@ def make_variants(base: str, which: list[str]) -> list[str]:
 
 def wait_and_fetch(tag: str, kernel: str) -> None:
     """Resume: a stage that is already on Kaggle — wait for it, then download it like run_stage does."""
-    while status(kernel) not in ("complete", "error", "cancelacknowledged", "cancelled", "unknown"):
+    unknown_since = None
+    while True:
+        s = status(kernel)
+        if s in ("complete", "error", "cancelacknowledged", "cancelled"):
+            break
+        if s == "unknown":  # transient API failure: only give up after 15 minutes of it
+            unknown_since = unknown_since or time.time()
+            if time.time() - unknown_since > 900:
+                log(f"[{tag}] status unknown for 15 min — giving up")
+                break
+        else:
+            unknown_since = None
         time.sleep(60)
     dest = ROOT / "outputs" / kernel.split("/")[1]
     dest.mkdir(parents=True, exist_ok=True)
