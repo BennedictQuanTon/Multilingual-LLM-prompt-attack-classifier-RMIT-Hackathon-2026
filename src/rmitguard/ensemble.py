@@ -83,6 +83,9 @@ def ensemble(
     weights: dict[str, float] | None = None,
     allow_multi_backbone: bool = False,
     only: list[str] | None = None,
+    xling: str | Path | None = "auto",
+    xling_threshold: float | None = None,
+    tuned_offsets: bool = False,
 ) -> Path:
     runs = [
         r for r in (load_run(d) for d in find_runs(roots)) if "members" not in r["meta"]
@@ -115,8 +118,33 @@ def ensemble(
     test_p = sum(w[n] * m["test"] for n, m in merged.items()) / total
 
     language = train["language"].astype(str).to_numpy()
+    xling_info = None
+    if xling == "auto":  # an xling.npz next to the runs (e.g. from a Kaggle input) is picked up automatically
+        hits = [p for r in roots for p in Path(r).rglob("xling.npz")] if roots else []
+        xling = hits[0] if hits else None
+    if xling:
+        from .xling import THRESHOLD, apply_override
+
+        z = np.load(xling)
+        thr = xling_threshold if xling_threshold is not None else THRESHOLD
+        m = ~np.isnan(oof).any(axis=1)
+        before = score_oof(oof, y, folds, language)
+        if np.array_equal(z["folds"], folds):  # train neighbours come from other folds -> OOF stays honest
+            oof = oof.copy()
+            oof[m] = apply_override(oof[m], z["train_sim"][m], y[z["train_nn"][m]], thr)
+        test_p = apply_override(test_p, z["test_sim"], y[z["test_nn"]], thr)
+        xling_info = dict(
+            threshold=thr,
+            oof_overridden=int((z["train_sim"][m] >= thr).sum()),
+            test_overridden=int((z["test_sim"] >= thr).sum()),
+            macro_f1_tuned_before=before.get("macro_f1_tuned"),
+            macro_f1_crossfit_before=before.get("macro_f1_tuned_crossfit"),
+        )
+        print(f"xling override (sim >= {thr}): {xling_info}")
     scores = score_oof(oof, y, folds, language)
-    bias = np.asarray(scores["bias"])
+    # tuned offsets look better in-sample but lose to plain argmax when fitted out-of-fold
+    # (5-fold OOF: argmax 0.9649 vs cross-fit 0.9631; 5-member ensemble fold 0: 0.9679 vs 0.9658)
+    bias = np.asarray(scores["bias"]) if tuned_offsets else np.zeros(oof.shape[1])
     hold = folds == -1
     holdout = None
     if hold.any():
@@ -157,6 +185,8 @@ def ensemble(
                 n_test=len(test),
                 scores=_jsonable(scores),
                 holdout=_jsonable(holdout),
+                xling=xling_info,
+                decision="tuned offsets" if tuned_offsets else "argmax",
                 updated_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
             ),
             indent=2,
@@ -167,10 +197,8 @@ def ensemble(
     write_report(
         out,
         f"ensemble: {out.name}",
-        [
-            f"`{n}` · weight {m['weight']} · folds {m['folds_done']} · {m['model']}"
-            for n, m in members.items()
-        ],
+        [f"`{n}` · weight {m['weight']} · folds {m['folds_done']} · {m['model']}" for n, m in members.items()]
+        + ([f"cross-lingual override: {xling_info}"] if xling_info else []),
         scores,
         sub,
         [],

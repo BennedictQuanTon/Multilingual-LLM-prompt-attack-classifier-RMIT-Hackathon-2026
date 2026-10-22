@@ -1,0 +1,27 @@
+{
+ "single": {
+  "deberta-pi-v2": 0.945334181267215,
+  "xlmr-base": 0.9277852096352243,
+  "wolf-defender": 0.9601163045863507,
+  "mmbert-base": 0.9600887527125872,
+  "mmbert-base-ls": 0.953158510679601,
+  "mmbert-base-cw0": 0.960991475794109,
+  "mmbert-base-s2": 0.96252845978063,
+  "mmbert-base-lang": 0.9634521087399226,
+  "mmbert-base-ep2": 0.9585705094905067,
+  "mmbert-small": 0.9569556187818185,
+  "rembert": 0.9493877819377173,
+  "distilbert-mbert": 0.9183204229248091,
+  "xlmr-large": 0.9441237860959216,
+  "tfidf": 0.9361022312378816
+ },
+ "greedy": [
+  "mmbert-base-lang",
+  "tfidf",
+  "mmbert-base-ls",
+  "mmbert-small",
+  "mmbert-base-s2",
+  "distilbert-mbert"
+ ],
+ "greedy_score": 0.9689812409812409
+}

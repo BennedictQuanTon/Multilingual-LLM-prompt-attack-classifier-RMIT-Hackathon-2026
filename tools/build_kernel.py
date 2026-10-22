@@ -26,7 +26,7 @@ PKG = ROOT / "src" / "rmitguard"
 sys.path.insert(0, str(ROOT / "src"))
 
 from rmitguard.config import load_config  # noqa: E402
-from rmitguard.constants import COMPETITION  # noqa: E402
+from rmitguard.constants import APPROVED_MODELS, COMPETITION  # noqa: E402
 
 NAME_RULE = {"university": r"[A-Za-z]+", "campus": r"[A-Za-z]+", "team": r"[A-Za-z0-9_-]+"}
 
@@ -107,7 +107,8 @@ Path('configs_run').mkdir(exist_ok=True)
 Path('logs').mkdir(exist_ok=True)
 FOLDS = {job: folds for job, _, folds in JOBS}
 for job, text, _ in JOBS:
-    Path(f'configs_run/{job}.yaml').write_text(text)
+    if text:
+        Path(f'configs_run/{job}.yaml').write_text(text)
 pending = [job for job, _, _ in JOBS]
 gpus = list(range(max(1, torch.cuda.device_count())))
 running, status, t0 = {}, {}, time.time()
@@ -116,15 +117,23 @@ running, status, t0 = {}, {}, time.time()
 def launch(gpu, name):
     env = {**os.environ, 'CUDA_VISIBLE_DEVICES': str(gpu), 'PYTHONPATH': 'src'}
     cmd = [sys.executable, '-m', 'rmitguard', 'train', f'configs_run/{name}.yaml', '--out', f'artifacts/{name}']
-    if FOLDS[name]:
+    if name == 'xling':  # cross-lingual neighbours (pre-trained mmBERT-base embeddings), a few minutes on a T4
+        cmd = [sys.executable, '-m', 'rmitguard', 'xling', '--out', 'artifacts/xling']
+    elif FOLDS[name]:
         cmd += ['--folds', FOLDS[name]]
     if HOLDOUT:
         cmd += ['--holdout', str(HOLDOUT)]
     return subprocess.Popen(cmd, env=env, stdout=open(f'logs/{name}.log', 'w'), stderr=subprocess.STDOUT)
 
 
+JOB_LIMIT_MIN = 170  # a hung job must not keep the session (and every other job's output) alive forever
+started = {}
 while pending or running:
     for gpu in gpus:
+        if gpu in running and running[gpu][1].poll() is None and time.time() - started[gpu] > JOB_LIMIT_MIN * 60:
+            print(f'[{(time.time() - t0) / 60:5.1f} min] {running[gpu][0]} killed: over {JOB_LIMIT_MIN} min', flush=True)
+            running[gpu][1].kill()
+            running[gpu][1].wait()
         if gpu in running and running[gpu][1].poll() is not None:
             name, proc = running.pop(gpu)
             status[name] = proc.returncode
@@ -132,6 +141,7 @@ while pending or running:
         if gpu not in running and pending:
             name = pending.pop(0)
             running[gpu] = (name, launch(gpu, name))
+            started[gpu] = time.time()
             print(f'[{(time.time() - t0) / 60:5.1f} min] {name} started on GPU {gpu}', flush=True)
     time.sleep(20)
 status"""
@@ -142,6 +152,9 @@ for name, rc in status.items():
     print(f'===== {name} (rc={rc})')
     if rc != 0:
         print(''.join(Path(f'logs/{name}.log').read_text().splitlines(True)[-40:]))
+        continue
+    if name == 'xling':
+        print(''.join(Path('logs/xling.log').read_text().splitlines(True)[-3:]))
         continue
     meta = json.loads(next(Path(f'artifacts/{name}').glob('*/meta.json')).read_text())
     s, ho = meta['scores'], meta.get('holdout')
@@ -206,7 +219,12 @@ def build(args) -> Path:
     elif args.mode == "bench":
         # several configs in ONE session: each T4 trains its own model (a Kaggle account gets one GPU
         # session at a time, so this doubles throughput and halves the quota spent)
-        specs = [(c.split("@")[0], c.split("@")[1] if "@" in c else args.folds) for c in args.config]
+        with_xling = "xling" in args.config
+        specs = [
+            (c.split("@")[0], c.split("@")[1] if "@" in c else args.folds)
+            for c in args.config
+            if c != "xling"
+        ]
         cfgs = [load_config(p, folds=_folds(f), holdout=args.holdout) for p, f in specs]
         if any(c.kind == "tfidf" for c in cfgs):
             raise SystemExit("tfidf is a local diagnostic; do not push it to Kaggle")
@@ -226,7 +244,9 @@ def build(args) -> Path:
                 f,
             )
             for c, (p, f) in zip(cfgs, specs)
-        ]
+        ] + ([("xling", "", None)] if with_xling else [])
+        if with_xling and APPROVED_MODELS["mmbert-base"][1] not in model_sources:
+            model_sources.append(APPROVED_MODELS["mmbert-base"][1])
         run = [
             md("## Run every config on its own GPU"),
             code(
@@ -241,7 +261,10 @@ def build(args) -> Path:
             raise SystemExit("--sources user/kernel-slug[,user/kernel-slug...] is required for an ensemble")
         suffix = None if args.final else "ensemble"
         enable_gpu = False
+        hf_id, kaggle_model, _ = APPROVED_MODELS[args.backbone]
         header = (
+            f"**Chosen model (approved list): `{hf_id}`** — Kaggle model `{kaggle_model}`. "
+            "Every ensemble member is a fine-tuned copy of this one backbone (different seeds / training options).\n\n"
             "Merges the out-of-fold and test predictions of our training notebooks (same CV split, same backbone),\n"
             "re-tunes the macro-F1 decision offsets on the merged OOF and writes `submission.csv`.\n\n"
             "Inputs: " + ", ".join(f"`{s}`" for s in kernel_sources)
@@ -325,6 +348,9 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--sources", default=None, help="ensemble: comma-separated kernel refs to merge")
     parser.add_argument("--allow-multi-backbone", action="store_true")
     parser.add_argument("--only", default=None, help="ensemble: comma-separated run names to merge")
+    parser.add_argument(
+        "--backbone", default="mmbert-base", help="ensemble: approved model key stated at the top"
+    )
     parser.add_argument("--final", action="store_true", help="use the official name RMIT_SGS_GenData_C1")
     parser.add_argument("--username", default=None)
     parser.add_argument("--tag", default=None, help="bench: name suffix of the notebook")

@@ -1,0 +1,158 @@
+{
+  "name": "best-now-5members-xling",
+  "model": "mmbert-base",
+  "members": {
+    "mmbert-base": {
+      "weight": 1.0,
+      "folds_done": [
+        0
+      ],
+      "model": "mmbert-base",
+      "sources": [
+        "outputs/rmit-sgs-gendata-bench-a-c1/artifacts/mmbert-base-f0/mmbert-base"
+      ]
+    },
+    "mmbert-base-cw0": {
+      "weight": 1.0,
+      "folds_done": [
+        0
+      ],
+      "model": "mmbert-base",
+      "sources": [
+        "outputs/rmit-sgs-gendata-s2-seed-tune-c1/artifacts/mmbert-base-cw0-f0/mmbert-base-cw0"
+      ]
+    },
+    "mmbert-base-lang": {
+      "weight": 1.0,
+      "folds_done": [
+        0
+      ],
+      "model": "mmbert-base",
+      "sources": [
+        "outputs/rmit-sgs-gendata-s2-seed-tune-c1/artifacts/mmbert-base-lang-f0/mmbert-base-lang"
+      ]
+    },
+    "mmbert-base-ls": {
+      "weight": 1.0,
+      "folds_done": [
+        0
+      ],
+      "model": "mmbert-base",
+      "sources": [
+        "outputs/rmit-sgs-gendata-s2-seed-tune-c1/artifacts/mmbert-base-ls-f0/mmbert-base-ls"
+      ]
+    },
+    "mmbert-base-s2": {
+      "weight": 1.0,
+      "folds_done": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "model": "mmbert-base",
+      "sources": [
+        "outputs/rmit-sgs-gendata-s2-seed-tune-c1/artifacts/mmbert-base-s2-f012/mmbert-base-s2",
+        "outputs/rmit-sgs-gendata-s2-seed-tune-c1/artifacts/mmbert-base-s2-f34/mmbert-base-s2"
+      ]
+    }
+  },
+  "split_fp": "10a79e50dde8",
+  "n_train": 14000,
+  "n_test": 6000,
+  "scores": {
+    "coverage": 0.2,
+    "macro_f1_argmax": 0.9707855771606697,
+    "macro_f1_tuned": 0.9728118531057396,
+    "bias": [
+      0.0,
+      -0.15,
+      -0.65
+    ],
+    "public_lb_ci95": [
+      0.9652152095008145,
+      0.9812465134409702
+    ],
+    "per_class": {
+      "precision": {
+        "BENIGN": 0.97317,
+        "JAILBREAK": 0.96608,
+        "PROMPT_INJECTION": 0.98964
+      },
+      "recall": {
+        "BENIGN": 0.98214,
+        "JAILBREAK": 0.95161,
+        "PROMPT_INJECTION": 0.97449
+      },
+      "f1": {
+        "BENIGN": 0.97764,
+        "JAILBREAK": 0.95879,
+        "PROMPT_INJECTION": 0.98201
+      },
+      "support": {
+        "BENIGN": 1736,
+        "JAILBREAK": 868,
+        "PROMPT_INJECTION": 196
+      }
+    },
+    "per_language": {
+      "n": {
+        "en": 281,
+        "fr": 700,
+        "it": 559,
+        "pt": 1260
+      },
+      "macro_f1": {
+        "en": 0.96726,
+        "fr": 0.98277,
+        "it": 0.99568,
+        "pt": 0.95793
+      },
+      "f1_BENIGN": {
+        "en": 0.98857,
+        "fr": 0.99083,
+        "it": 0.99567,
+        "pt": 0.95995
+      },
+      "f1_JAILBREAK": {
+        "en": 0.99429,
+        "fr": 0.9884,
+        "it": 0.99135,
+        "pt": 0.91948
+      },
+      "f1_PROMPT_INJECTION": {
+        "en": 0.91892,
+        "fr": 0.96907,
+        "it": 1.0,
+        "pt": 0.99435
+      }
+    },
+    "confusion": {
+      "pred_BENIGN": {
+        "true_BENIGN": 1705,
+        "true_JAILBREAK": 42,
+        "true_PROMPT_INJECTION": 5
+      },
+      "pred_JAILBREAK": {
+        "true_BENIGN": 29,
+        "true_JAILBREAK": 826,
+        "true_PROMPT_INJECTION": 0
+      },
+      "pred_PROMPT_INJECTION": {
+        "true_BENIGN": 2,
+        "true_JAILBREAK": 0,
+        "true_PROMPT_INJECTION": 191
+      }
+    }
+  },
+  "holdout": null,
+  "xling": {
+    "threshold": 0.78,
+    "oof_overridden": 285,
+    "test_overridden": 713,
+    "macro_f1_tuned_before": 0.9698945155770539,
+    "macro_f1_crossfit_before": null
+  },
+  "updated_at": "2026-10-22T03:01:07+00:00"
+}

@@ -36,9 +36,15 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--weights", default=None, help="name=weight,name=weight")
     p.add_argument("--allow-multi-backbone", action="store_true")
     p.add_argument("--only", default=None, help="comma-separated run names to keep, e.g. mmbert-base")
+    p.add_argument(
+        "--tuned-offsets", action="store_true", help="apply the OOF-tuned class offsets (default: argmax)"
+    )
 
     p = sub.add_parser("validate", help="check a submission CSV before spending a submission on it")
     p.add_argument("submission")
+
+    p = sub.add_parser("xling", help="cross-lingual nearest neighbours with pre-trained mmBERT-base")
+    p.add_argument("--out", default="artifacts/xling")
 
     sub.add_parser("labels", help="print the label order used everywhere")
 
@@ -69,6 +75,7 @@ def main(argv: list[str] | None = None) -> int:
             weights=weights,
             allow_multi_backbone=args.allow_multi_backbone,
             only=args.only.split(",") if args.only else None,
+            tuned_offsets=args.tuned_offsets,
         )
     elif args.cmd == "validate":
         import pandas as pd
@@ -90,6 +97,10 @@ def main(argv: list[str] | None = None) -> int:
         print(
             "✅ valid —", {k: f"{v:.1%}" for k, v in label_distribution(pd.read_csv(args.submission)).items()}
         )
+    elif args.cmd == "xling":
+        from .xling import run_xling
+
+        run_xling(args.data, args.out)
     elif args.cmd == "labels":
         print({lab: L2I[lab] for lab in LABELS})
     return 0

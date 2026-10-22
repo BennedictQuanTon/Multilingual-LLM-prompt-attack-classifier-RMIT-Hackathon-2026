@@ -76,3 +76,22 @@ def test_head_tail_truncation_keeps_both_ends():
     assert head_tail(ids, 200, 50) == ids
     out = head_tail(ids, 10, 6)
     assert out == [0, 1, 2, 3, 4, 5, 96, 97, 98, 99]
+
+
+def test_xling_neighbours_and_override():
+    from rmitguard.xling import apply_override, centre_by_language, nearest_other_language
+
+    rng = np.random.default_rng(0)
+    base = rng.normal(size=(6, 16))
+    lang = np.array(["pt", "pt", "pt", "fr", "fr", "fr"])
+    emb = centre_by_language(
+        base + np.where(lang[:, None] == "pt", 5.0, -5.0), lang
+    )  # language offset removed
+    q = emb.copy()
+    q[3:] = emb[:3] + 0.01 * rng.normal(size=(3, 16))  # rows 3-5 are "translations" of rows 0-2
+    q /= np.linalg.norm(q, axis=1, keepdims=True)
+    nn, sim = nearest_other_language(q[3:], lang[3:], q[:3], lang[:3])
+    assert list(nn) == [0, 1, 2] and (sim > 0.99).all()
+    probs = np.full((3, 3), 1 / 3)
+    out = apply_override(probs, np.array([0.99, 0.5, 0.9]), np.array([2, 1, 0]), threshold=0.8)
+    assert out[0].argmax() == 2 and np.allclose(out[1], 1 / 3) and out[2].argmax() == 0

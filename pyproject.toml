@@ -47,7 +47,7 @@ packages = ["src/rmitguard"]
 line-length = 110
 target-version = "py310"
 src = ["src", "tests", "tools"]
-extend-exclude = ["kaggle/build"]
+extend-exclude = ["kaggle/build", "kaggle/ready"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "NPY", "RUF"]

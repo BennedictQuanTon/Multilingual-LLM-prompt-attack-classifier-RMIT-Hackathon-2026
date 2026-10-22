@@ -5,7 +5,100 @@
 
 ---
 
-## ★ KẾ HOẠCH ĐIỂM CAO NHẤT (chốt 08:55, 22/10)
+## ★★ CẬP NHẬT 10:40 (22/10) — phát hiện mới + lịch nộp còn lại
+
+**Phiên Kaggle**
+- `s1` (Granite + mmbert-base fold 1–4): job mmbert fold 1–2 **kẹt 3,5 giờ** (bình thường 26 phút); phiên không bao giờ tự kết thúc → **đã xoá notebook** để lấy slot (CLI/API không có lệnh cancel; xoá = huỷ). Mất Granite và fold 1–4.
+- `s5-v1-variants` (pushed 10:27, timeout 9000 s): **mmbert-base fold 1–4** (bù phần s1) + lang/cw0/ls fold 1–4 + xling → dự kiến xong **~12:20**.
+- `s3` (Mistral fold 0 + seed 3): **bỏ Mistral** (quyết định 10:37) → đã xoá notebook; mất luôn seed 3.
+- `b3-granite-s4` (pushed 10:37 trên tài khoản lead, timeout 10800 s): **Granite-2B fold 0** (GPU 0, tối đa 170 phút) + mmbert-base seed 4 ×5 fold (GPU 1, ~65 phút, thay seed 3). seed 4 xong ~11:45; Granite xong muộn nhất **~13:30**.
+- Runner bench giờ **tự kill job nào chạy quá 170 phút** (`JOB_LIMIT_MIN`) → không còn phiên treo vô hạn.
+- Log trực tiếp đọc được qua API stream (`kernels_logs_stream`) dù CLI `kernels logs` trả rỗng.
+
+**Phát hiện 1 — lỗi dồn vào tiếng Bồ Đào Nha** (OOF 5 fold, `mmbert-base-s2`, 14.000 dòng)
+
+| ngôn ngữ | dòng | lỗi | tỉ lệ lỗi | macro F1 |
+|---|---|---|---|---|
+| pt | 6.300 | **340** | **5,4%** | 0,953 |
+| fr | 3.500 | 44 | 1,3% | 0,976 |
+| it | 2.800 | 29 | 1,0% | 0,982 |
+| en | 1.400 | 16 | 1,1% | 0,973 |
+
+- 328/340 lỗi pt là **BENIGN ↔ JAILBREAK**, ở văn bản **300–3000 ký tự (tỉ lệ lỗi 8,5%)**, model **rất tự tin** (trung vị p = 0,99).
+- Mẫu lỗi có kiểu "adversarial benign" và "adversarial harmful" của WildJailbreak: nhập vai, kịch bản giả tưởng, "chuyên gia an ninh". Hai nhóm viết cùng một phong cách, nhãn phụ thuộc vào ý định có hại bên dưới.
+- Các thứ không giúp được:
+  - kNN cùng ngôn ngữ (TF-IDF): khi độ tương đồng cao, model vốn đã đúng 100%.
+  - xling: pt F1 trước và sau đều 0,9579, vì các câu pt khó không có bản dịch.
+  - Offset riêng cho từng ngôn ngữ: +0,0008, nằm trong nhiễu.
+- ⇒ Đòn bẩy còn lại là **LLM** (hiểu ý định tốt hơn) — chỉ Granite (`b3-granite-s4`).
+
+**Phát hiện 2 — bỏ offset, dùng argmax.** Offset tinh chỉnh trông tốt khi đo trên chính tập đã fit, nhưng **thua argmax khi fit ngoài fold**:
+
+| | argmax | offset (cross-fit) |
+|---|---|---|
+| OOF 5 fold `mmbert-base-s2` | **0,9649** | 0,9631 |
+| ensemble 5 thành viên, fold 0 | **0,9679** | 0,9658 ± 0,0011 |
+| ensemble 5 + xling, fold 0 | **0,9708** | 0,9686 ± 0,0017 |
+
+⇒ `ensemble()` mặc định dùng **argmax** (`--tuned-offsets` để bật lại). Bản 02 đã nộp có 16 nhãn test bị offset đổi.
+
+**Ứng viên ensemble (fold 0, argmax + xling)** — chênh nhau trong nhiễu ±0,002, chọn bản đơn giản nhất:
+5 mmbert-base **0,9708** · +mmbert-small 0,9701 · +small+wolf 0,9710 · +small+tfidf 0,9719 · greedy cũ 0,9687 · +ep2 0,9690.
+
+**Lịch nộp (còn 5 lượt hôm nay: 2 thử + 3 bản chính thức)**
+
+| # | khi nào | file | nội dung | kỳ vọng |
+|---|---|---|---|---|
+| thử 1 | ngay | `submissions/04_ens5_xling_argmax.csv` | 5 mmbert-base (fold 0) + xling + argmax | fold 0 0,9708 (02: 0,9679 argmax) |
+| thử 2 | ~13:00 | `05_…` | mmbert-base ×5 fold + lang/cw0/ls ×5 fold + s2 + xling + argmax | thêm 4 fold mô hình/thành viên |
+| chính thức ×3 | 14:30–17:00 | `06_…` | bản tốt nhất + seed 4 + (Granite nếu fold 0 giúp được pt) — notebook `RMIT_SGS_GenData_C1` | |
+
+---
+
+## ★ KẾ HOẠCH ĐIỂM CAO NHẤT — v2 (09:55, 22/10) · BTC cho phép ensemble
+
+**Mốc thật:** nộp #1 = ensemble 5 thành phần mmBERT-base → **public LB 0.96915 (hạng 7)**, khớp CV fold 0 ~0.968 ⇒ **CV của mình đáng tin**.
+Top LB: **0.98359** (RMIT_HNI_MUCK) · 0.97554 · 0.97471 · 0.97280 · 0.97238 · 0.97185 · **0.96915 (mình)**.
+
+### Ba đòn bẩy đã đo (fold 0, 2.800 dòng, cross-fit)
+| đòn bẩy | macro F1 | tăng | trạng thái |
+|---|---|---|---|
+| 1 model mmBERT-base | 0.960–0.9635 | — | |
+| **Ensemble họ mmBERT-base** (base, seed 2, `lang`, `ls`, `cw0`) | 0.9677 (tuned in-sample 0.9699) | +0.006 | ✅ đang nộp |
+| **+ backbone khác** (greedy chọn: `mmbert-small`, TF-IDF, `distilbert`) | **0.9690** | +0.0013 | cần 5 fold cho `mmbert-small` |
+| **+ dò bản dịch chéo ngôn ngữ (kNN)** — xem dưới | 0.9699 → **0.9728** | **+0.003** | cần đưa vào pipeline |
+| LLM (Granite 2B / Mistral 7B) | ? | ? | ⏳ `s1` / `s3` |
+
+**Phát hiện mới — dữ liệu có bản dịch chéo:** cùng một prompt gốc xuất hiện ở nhiều ngôn ngữ (vd. prompt tiếng Anh trong *test* có bản tiếng Pháp trong *train*).
+Đo bằng embedding **mmBERT-base gốc** (model được duyệt, không fine-tune), chuẩn hoá theo từng ngôn ngữ, tìm hàng xóm gần nhất ở ngôn ngữ khác:
+| độ giống ≥ | phủ (train) | nhãn trùng | phủ (test) |
+|---|---|---|---|
+| 0.75 | 15,4% | 99,1% | 15,6% |
+| 0.80 | 9,1% | 99,5% | 8,8% |
+| 0.85 | 4,4% | 100% | 4,3% |
+Trên fold 0: thay nhãn bằng nhãn của hàng xóm khi độ giống ≥ 0.78 → **sửa 3, phá 0** dòng → +0.003. Không dùng nhãn tay, chỉ dùng train + model được duyệt ⇒ hợp luật.
+
+### Bản nộp mục tiêu
+`ensemble = {mmBERT-base × 6 biến thể/seed} + {mmbert-small} + {TF-IDF}` (mỗi cái 5 fold) → offset theo lớp → **override kNN chéo ngôn ngữ (sim ≥ 0.78)**.
+Kỳ vọng CV **~0.971–0.973**. Đuổi top 1 (0.984) cần thêm một bước nhảy lớn — ứng viên duy nhất còn lại: **LLM** (đang đo).
+
+### Phân việc GPU (tối đa 2 phiên / tài khoản)
+| ai | phiên | việc | ~thời gian |
+|---|---|---|---|
+| lead | `s1` ⏳ | Granite fold 0 + mmbert-base fold 1–4 (v1) | quá 3h, chờ Kaggle cắt |
+| lead | `s3` ⏳ | **Mistral fold 0** + seed 3 | ~11:30 |
+| lead | `s5` (chờ slot) | `cw0` / `ls` / `lang` fold 1–4 | 75 phút |
+| lead | `s4` (chờ slot) | holdout | 45 phút |
+| **B** | 1 | **`mmbert-small` 5 fold** (8 phút/fold) | ~30 phút |
+| **B** | 2 | **`wolf-defender` 5 fold** | ~35 phút |
+| **C** | 1 | `mmbert-base-lang-s2` 5 fold | ~40 phút |
+| **C** | 2 | `mmbert-base-cw0-s2` 5 fold | ~40 phút |
+
+Lệnh cho B: `uv run python tools/build_kernel.py bench configs/mmbert-small.yaml@0,1,2 configs/mmbert-small.yaml@3,4 --tag b1-mmbert-small && uv run kaggle kernels push -p kaggle/build/rmit-sgs-gendata-b1-mmbert-small-c1 -t 3600`
+và `… configs/wolf-defender.yaml@0,1,2 configs/wolf-defender.yaml@3,4 --tag b2-wolf …  -p kaggle/build/rmit-sgs-gendata-b2-wolf-c1 -t 3600`.
+
+
+## Kế hoạch v1 (08:55, trước khi biết được ensemble) — giữ để tham khảo
 
 **Bản nộp cuối = ensemble `mmbert-base`, mỗi thành phần đủ 5 fold:**
 
@@ -46,7 +139,7 @@ Tất cả là `mmbert-base` (cùng backbone, cùng split `10a79e50dde8`) ⇒ gh
 
 | người | phiên | thành phần | lệnh (chạy ở thư mục repo) |
 |---|---|---|---|
-| B | 1 | `mmbert-base-lang-s2` (nhãn ngôn ngữ, seed 7) | `uv run python tools/build_kernel.py bench configs/sweep/mmbert-base-lang-s2.yaml@0,1,2 configs/sweep/mmbert-base-lang-s2.yaml@3,4 --tag b1-lang-s2 && uv run kaggle kernels push -p kaggle/build/rmit-sgs-gendata-b1-lang-s2-c1 -t 3600` |
+| B | 1 | ~~`mmbert-base-lang-s2`~~ → xem kế hoạch v2: `mmbert-small` 5 fold | `uv run python tools/build_kernel.py bench configs/sweep/mmbert-base-lang-s2.yaml@0,1,2 configs/sweep/mmbert-base-lang-s2.yaml@3,4 --tag b1-lang-s2 && uv run kaggle kernels push -p kaggle/build/rmit-sgs-gendata-b1-lang-s2-c1 -t 3600` |
 | B | 2 | `mmbert-base-cw0-s2` (không trọng số lớp, seed 7) | `uv run python tools/build_kernel.py bench configs/sweep/mmbert-base-cw0-s2.yaml@0,1,2 configs/sweep/mmbert-base-cw0-s2.yaml@3,4 --tag b2-cw0-s2 && uv run kaggle kernels push -p kaggle/build/rmit-sgs-gendata-b2-cw0-s2-c1 -t 3600` |
 | C | 1 | `mmbert-base-ls-s2` (label smoothing, seed 7) | `uv run python tools/build_kernel.py bench configs/sweep/mmbert-base-ls-s2.yaml@0,1,2 configs/sweep/mmbert-base-ls-s2.yaml@3,4 --tag c1-ls-s2 && uv run kaggle kernels push -p kaggle/build/rmit-sgs-gendata-c1-ls-s2-c1 -t 3600` |
 | C | 2 | `mmbert-base-s4` (gốc, seed 21) | `uv run python tools/build_kernel.py bench configs/sweep/mmbert-base-s4.yaml@0,1,2 configs/sweep/mmbert-base-s4.yaml@3,4 --tag c2-s4 && uv run kaggle kernels push -p kaggle/build/rmit-sgs-gendata-c2-s4-c1 -t 3600` |
