@@ -1,0 +1,14 @@
+# Single-model submission (organisers: one fine-tuned approved model, no ensembles): mmbert-base on 100% of train
+name: mmbert-base-lang-full
+model: mmbert-base
+max_len: 512
+head_len: 384
+lr: 3.0e-5
+epochs: 3
+batch_size: 16
+grad_accum: 1
+class_weight: sqrt
+freeze_embeddings: true
+folds: [0]
+full_fit: true
+prepend_language: true

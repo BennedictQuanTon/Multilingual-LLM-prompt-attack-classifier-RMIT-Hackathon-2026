@@ -63,6 +63,26 @@ xác suất NaN (nghi tràn fp16 lúc suy luận) → **loại**; mọi fold LLM
 - `kaggle/ready/B5_granite-seed2.ipynb`: Granite seed 2 fold 0–1 cho **Di Luan** chạy (~95 phút)
 - Script ghép tự gộp mọi seed Granite và loại fold hỏng.
 
+**16:20 — Granite fold 3–4 tốt (F1 0,944 / 0,934); fold 2 hỏng cả 2 lần** (seed 42: 0,368 + NaN; seed 7: 0,628) → loại fold 2.
+- **Bản 11** (Granite fold 0,1,3,4; pt 0,4): OOF 11.200 dòng 0,9726 → **0,9759**; **public 0,97555** (bản 10: 0,97530; khác 7 nhãn).
+- Thử thêm, không hơn: Granite chỉ quyết định B/J 0,9756 · Granite chỉ khi ensemble không chắc 0,9757–0,9761 (nhiễu).
+- Lỗi pt nằm ở văn bản 300–1.500 ký tự (~5%), không phải văn bản bị cắt (chỉ 35 dòng pt test > 2.000 ký tự) → max_len dài hơn không giúp.
+- Còn chờ Granite seed 2: `b5` (Di Luan, fold 0–1) và `b6` (fold 3–4) → ~16:55–17:00 → bản 12 nếu tốt hơn.
+
+**17:12 — chốt bản cuối = 12c → `submissions/RMIT_SGS_GenData_C1.csv`** (md5 `79d0268f…`, public **0,97913**).
+
+| bản | thay đổi so với 11 | public |
+|---|---|---|
+| 11 | Granite 4 fold cho pt | 0,97555 |
+| 12a | Granite pt 0,45 | 0,97599 |
+| 12b | Granite chỉ khi ensemble không chắc | 0,97644 |
+| **12c** | **+2 model mmbert-base train 100% dữ liệu** | **0,97913** |
+| 13 | 12c + 4 model 100% nữa + Granite seed 2 fold 0 | 0,97824 |
+
+- Bản 13 kém 12c (−0,0009, khác 12 nhãn ≈ 4 dòng public) → ngang nhiễu; giữ 12c vì đã được LB xác nhận.
+- Granite rất bất ổn: 3/8 lần train hỏng (fold 2 ×2, seed 2 fold 1) → luôn lọc fold có OOF F1 < 0,9.
+- Các file cũ: `submissions/archive/`.
+
 | bản model đơn | file | fold 0 | public dự kiến |
 |---|---|---|---|
 | mmbert-base, 1 fold (80% train), argmax | `submissions/07_single_mmbert-base_fold0_argmax.csv` | 0,9622 | ~0,963–0,966 |

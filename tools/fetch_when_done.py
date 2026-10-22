@@ -21,7 +21,10 @@ USER = "longquanton"
 
 
 def fetch(slug: str) -> None:
-    kernel, tag = f"{USER}/{slug}", slug.removeprefix("rmit-sgs-gendata-").removesuffix("-c1")
+    # "slug" (our account) or "owner/slug" (a teammate's notebook shared with us)
+    kernel = slug if "/" in slug else f"{USER}/{slug}"
+    slug = kernel.split("/")[1]
+    tag = slug.removeprefix("rmit-sgs-gendata-").removesuffix("-c1")
     seen_running, last = False, ""
     deadline = time.time() + 8 * 3600
     while time.time() < deadline:

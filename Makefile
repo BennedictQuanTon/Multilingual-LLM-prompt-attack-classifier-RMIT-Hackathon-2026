@@ -13,7 +13,7 @@ ONLY ?=
 TIMEOUT ?= 3600
 
 .DEFAULT_GOAL := help
-.PHONY: help setup check lint fmt test smoke data eda baseline build build-final push push-ensemble status output ensemble validate submit-dry submit
+.PHONY: help setup check lint fmt test smoke data eda baseline build build-final push push-ensemble status output ensemble final figures experiments validate submit-dry submit
 
 help: ## show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n",$$1,$$2}'
@@ -77,6 +77,15 @@ output: ## download a kernel's output to outputs/<slug>: make output KERNEL=user
 
 ensemble: ## merge local run dirs: make ensemble SOURCES="outputs/a outputs/b"
 	$(RUN) rmitguard ensemble $(SOURCES) $(if $(ONLY),--only $(ONLY))
+
+final: ## rebuild the final submission (public 0.97913) from outputs/ -> submissions/RMIT_SGS_GenData_C1.csv
+	$(RUN) python tools/build_final.py
+
+figures: ## redraw the README charts -> docs/figures/
+	$(RUN) python tools/make_readme_figures.py
+
+experiments: ## regroup every run + charts -> experiments/
+	$(RUN) python tools/collect_experiments.py
 
 validate: ## make validate FILE=path/to/submission.csv
 	$(RUN) rmitguard validate $(FILE)

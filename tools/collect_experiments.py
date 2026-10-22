@@ -38,6 +38,9 @@ STAGES = {
 DEBUG = {"xlmr-large-f0": "xlmr-large", "mmbert-base-f0": "mmbert-base", "wolf-defender-f0": "wolf-defender"}
 
 
+# stages whose runs are fold subsets of one experiment (same name, different folds)
+FOLD_SUBSET_STAGES = ("05-llm-fold0", "08-fold-runs")
+
 TUNE_SUFFIXES = ("-ls", "-lang", "-cw0", "-ep2", "-ep", "-lr")
 
 
@@ -53,9 +56,11 @@ def stage_of(run_dir: Path) -> str | None:
     name = meta["name"]
     if meta.get("holdout"):
         return "06-holdout"
+    if meta.get("config", {}).get("full_fit"):
+        return "10-full-train"  # one model on 100% of train (single-model submission / test-only ensemble members)
     if name.startswith(("granite", "mistral")):
         return "05-llm-fold0"
-    if name.endswith(TUNE_SUFFIXES):
+    if name.endswith(TUNE_SUFFIXES) and meta.get("folds_done") == [0]:
         return "04-tune-fold0"
     if meta.get("folds_done") == [0] and meta.get("split_fp") == FULL_SPLIT and tag.startswith("bench"):
         return "03-bench-fold0"
@@ -160,6 +165,9 @@ def table(df: pd.DataFrame) -> str:
 
 def main() -> None:
     EXP.mkdir(exist_ok=True)
+    for st in FOLD_SUBSET_STAGES:  # rebuilt from scratch: folder names depend on the fold subsets
+        if (EXP / st).exists():
+            shutil.rmtree(EXP / st)
     eda_charts()
     runs = [
         d
@@ -171,7 +179,10 @@ def main() -> None:
         st = stage_of(d)
         if st is None:
             continue
-        name = json.loads((d / "meta.json").read_text())["name"]
+        meta = json.loads((d / "meta.json").read_text())
+        name = meta["name"]
+        if st in FOLD_SUBSET_STAGES:  # several runs share a name (one per fold subset): keep them all
+            name += "-f" + "".join(map(str, meta["folds_done"]))
         dest = EXP / st / name
         copy_run(d, dest, health_only=(st == "02-pipeline-debug"))
         by_stage.setdefault(st, []).append(d)
@@ -208,6 +219,10 @@ def main() -> None:
         "| `04-tune-fold0/` | variants of the two best encoders (epochs, lr, language tag, class weights) |",
         "| `05-llm-fold0/` | Granite-2B / Mistral-7B, 4-bit + LoRA |",
         "| `06-holdout/` | best encoder config, 20% locked holdout (private-LB estimate) |",
+        "| `07-v1/` | mmbert-base merged over 5 folds |",
+        "| `08-fold-runs/` | fold subsets of the 5-fold members (merged in the ensembles) |",
+        "| `09-ensembles/` | ensembles scored on fold 0 / full OOF |",
+        "| `10-full-train/` | single models trained on 100% of train (fold-0 rows scored in-sample) |",
         "| `summary/` | comparison charts + `summary.csv` for every fold-0 run |",
         "",
     ]
