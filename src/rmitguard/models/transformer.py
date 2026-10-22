@@ -12,6 +12,8 @@ import glob
 import inspect
 import math
 import os
+
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 import shutil
 import time
 
@@ -22,6 +24,7 @@ import torch.nn.functional as F
 import transformers
 from datasets import Dataset
 from packaging.version import Version
+from sklearn.metrics import f1_score
 from transformers import (
     AutoConfig,
     AutoModel,
@@ -29,13 +32,13 @@ from transformers import (
     AutoTokenizer,
     DataCollatorWithPadding,
     Trainer,
+    TrainerCallback,
     TrainingArguments,
 )
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 from ..config import ExperimentConfig
 from ..constants import L2I, LABELS
-from ..metrics import macro_f1
 
 WORK_DIR = "/kaggle/working" if os.path.isdir("/kaggle/working") else "."
 ID2LABEL = dict(enumerate(LABELS))
@@ -179,6 +182,25 @@ def class_weights(y: np.ndarray, mode: str) -> torch.Tensor:
     return torch.tensor(w / w.mean(), dtype=torch.float32)
 
 
+class HealthCallback(TrainerCallback):
+    """Adds wall-clock minutes and allocated VRAM to every log row (loss-vs-time and memory charts)."""
+
+    def on_train_begin(self, args, state, control, **kwargs):
+        self.t0 = time.time()
+
+    def on_log(self, args, state, control, logs=None, **kwargs):
+        if state.log_history:
+            state.log_history[-1]["elapsed_min"] = round((time.time() - self.t0) / 60, 3)
+            if torch.cuda.is_available():
+                state.log_history[-1]["vram_gb"] = round(torch.cuda.max_memory_allocated() / 1e9, 3)
+
+
+def eval_metrics(p) -> dict:
+    pred = _softmax(p.predictions).argmax(1)
+    f1 = f1_score(p.label_ids, pred, labels=list(range(len(LABELS))), average=None, zero_division=0)
+    return {"macro_f1": float(f1.mean()), **{f"f1_{lab}": float(v) for lab, v in zip(LABELS, f1)}}
+
+
 class WeightedTrainer(Trainer):
     def __init__(self, *args, class_weights: torch.Tensor, label_smoothing: float = 0.0, **kwargs):
         super().__init__(*args, **kwargs)
@@ -213,12 +235,27 @@ def _softmax(logits) -> np.ndarray:
     return torch.softmax(torch.tensor(np.asarray(logits), dtype=torch.float32), dim=-1).numpy()
 
 
-def predict_probs(trainer: Trainer, ids: list[list[int]]) -> np.ndarray:
-    """Predict in length order (much less padding on a long-tailed length distribution), then restore order."""
+@torch.no_grad()
+def predict_probs(model, tokenizer, ids: list[list[int]], batch_size: int, fp16: bool) -> np.ndarray:
+    """Own inference loop, row order guaranteed.
+
+    Trainer.predict in transformers 5 returned rows in a different order than the dataset (its label_ids no
+    longer matched the input), so the first xlmr-large run scored 0.35 OOF while its in-training eval said 0.94.
+    Batches are formed in length order (much less padding) and written back to their original rows.
+    """
+    model.eval()
+    device = next(p for p in model.parameters()).device
+    collate = DataCollatorWithPadding(tokenizer)
     order = np.argsort([len(x) for x in ids], kind="stable")
-    probs = _softmax(trainer.predict(to_dataset([ids[i] for i in order])).predictions)
-    out = np.empty_like(probs)
-    out[order] = probs
+    out = np.empty((len(ids), len(LABELS)), dtype=np.float32)
+    use_amp = fp16 and device.type == "cuda"
+    for start in range(0, len(order), batch_size):
+        idx = order[start : start + batch_size]
+        batch = collate([{"input_ids": ids[i], "attention_mask": [1] * len(ids[i])} for i in idx])
+        batch = {k: v.to(device) for k, v in batch.items()}
+        with torch.autocast(device_type="cuda", dtype=torch.float16, enabled=use_amp):
+            logits = model(**batch).logits
+        out[idx] = torch.softmax(logits.float(), dim=-1).cpu().numpy()
     return out
 
 
@@ -248,10 +285,14 @@ def train_fold(
     if torch.cuda.is_available():
         torch.cuda.reset_peak_memory_stats()
     model = load_llm(path, cfg, tokenizer) if is_llm else load_encoder(path)
+    if cfg.freeze_embeddings and not is_llm:
+        model.get_input_embeddings().weight.requires_grad_(False)
+    single_gpu = is_llm or cfg.n_gpu == 1
     n_gpu = torch.cuda.device_count()
-    devices = 1 if is_llm else max(n_gpu, 1)
+    devices = 1 if single_gpu else max(n_gpu, 1)
     steps_per_epoch = math.ceil(len(tr_ids) / (cfg.batch_size * cfg.grad_accum * devices))
     out_dir = os.path.join(WORK_DIR, f"tmp_{cfg.name}_{seed}")
+    probe = np.random.default_rng(seed).choice(len(tr_ids), min(cfg.train_probe, len(tr_ids)), replace=False)
     args = make_training_args(
         output_dir=out_dir,
         per_device_train_batch_size=cfg.batch_size,
@@ -267,9 +308,10 @@ def train_fold(
         gradient_checkpointing_kwargs={"use_reentrant": False} if cfg.grad_ckpt and not is_llm else None,
         optim="paged_adamw_8bit" if is_llm else "adamw_torch",
         max_grad_norm=1.0,
-        eval_strategy="epoch",
+        eval_strategy="steps",
+        eval_steps=max(1, steps_per_epoch // cfg.evals_per_epoch),
         save_strategy="no",
-        logging_steps=25,
+        logging_steps=max(1, steps_per_epoch // 20),
         report_to="none",
         seed=seed,
         data_seed=seed,
@@ -277,20 +319,35 @@ def train_fold(
         **LENGTH_GROUPING,
         label_names=["labels"],
     )
-    if is_llm and args.n_gpu > 1:
+    if single_gpu and args.n_gpu > 1:
         args._n_gpu = 1
     trainer = WeightedTrainer(
         model=model,
         args=args,
         train_dataset=to_dataset(tr_ids, y_train),
-        eval_dataset=to_dataset(va_ids, y_val),
+        # same loss on a fixed train sample and on the validation fold -> over/under-fitting is visible
+        eval_dataset={
+            "val": to_dataset(va_ids, y_val),
+            "train": to_dataset([tr_ids[i] for i in probe], y_train[probe]),
+        },
         data_collator=DataCollatorWithPadding(tokenizer),
-        compute_metrics=lambda p: {"macro_f1": macro_f1(p.label_ids, _softmax(p.predictions).argmax(1))},
+        compute_metrics=eval_metrics,
+        callbacks=[HealthCallback()],
         class_weights=class_weights(y_train, cfg.class_weight),
         label_smoothing=cfg.label_smoothing,
     )
     trainer.train()
-    val_probs, test_probs = predict_probs(trainer, va_ids), predict_probs(trainer, te_ids)
+    infer_bs = cfg.batch_size * (2 if is_llm else 4)
+    val_probs, test_probs = (
+        predict_probs(trainer.model, tokenizer, x, infer_bs, cfg.fp16) for x in (va_ids, te_ids)
+    )
+    # guard: the final predictions must agree with the in-training evaluation of the same model
+    evals = [r["eval_val_macro_f1"] for r in trainer.state.log_history if "eval_val_macro_f1" in r]
+    final_f1 = float(f1_score(y_val, val_probs.argmax(1), average="macro", labels=list(range(len(LABELS)))))
+    if evals and final_f1 < evals[-1] - 0.05:
+        raise RuntimeError(
+            f"prediction misalignment: in-training eval macro F1 {evals[-1]:.4f} vs final {final_f1:.4f}"
+        )
     info = dict(
         model_path=path,
         minutes=(time.time() - t0) / 60,

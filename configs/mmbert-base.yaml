@@ -1,10 +1,12 @@
-# Main candidate. ModernBERT architecture, 1800+ languages, long context: keep more of the long jailbreaks.
+# Main candidate. ModernBERT architecture, 1800+ languages. 98% of prompts fit in 512 tokens.
+# Embedding matrix (256k tokens) frozen to keep DataParallel inside T4 memory.
 name: mmbert-base
 model: mmbert-base
-max_len: 1024
-head_len: 768
+max_len: 512
+head_len: 384
 lr: 3.0e-5
 epochs: 3
-batch_size: 8
-grad_accum: 2
+batch_size: 16
+grad_accum: 1
 class_weight: sqrt
+freeze_embeddings: true

@@ -13,3 +13,6 @@ warmup_ratio: 0.05
 class_weight: sqrt
 lora: {r: 16, alpha: 32, dropout: 0.05}
 time_budget_hours: 11.0
+# LLM evaluation over 2,800 rows is expensive: 2 checkpoints per epoch, smaller train probe
+evals_per_epoch: 2
+train_probe: 256

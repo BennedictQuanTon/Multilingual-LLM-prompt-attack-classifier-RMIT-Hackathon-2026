@@ -1,0 +1,154 @@
+{
+  "name": "mmbert-small",
+  "model": "mmbert-small",
+  "hf_id": "jhu-clsp/mmBERT-small",
+  "config": {
+    "name": "mmbert-small",
+    "model": "mmbert-small",
+    "seed": 42,
+    "split_seed": 42,
+    "n_folds": 5,
+    "folds": [
+      0
+    ],
+    "holdout": 0.0,
+    "max_len": 512,
+    "head_len": 384,
+    "prepend_language": false,
+    "lr": 5e-05,
+    "epochs": 3,
+    "batch_size": 32,
+    "grad_accum": 1,
+    "warmup_ratio": 0.1,
+    "weight_decay": 0.01,
+    "class_weight": "sqrt",
+    "label_smoothing": 0.0,
+    "grad_ckpt": false,
+    "n_gpu": null,
+    "freeze_embeddings": false,
+    "fp16": true,
+    "lora": {
+      "r": 16,
+      "alpha": 32,
+      "dropout": 0.05
+    },
+    "tfidf": {
+      "C": 8.0
+    },
+    "time_budget_hours": 11.0,
+    "evals_per_epoch": 4,
+    "train_probe": 512,
+    "notes": ""
+  },
+  "split_fp": "10a79e50dde8",
+  "n_train": 14000,
+  "n_holdout": 0,
+  "n_test": 6000,
+  "folds_done": [
+    0
+  ],
+  "n_test_models": 1,
+  "fold_stats": [
+    {
+      "fold": 0,
+      "n_train": 11200,
+      "n_val": 2800,
+      "macro_f1": 0.9543625485133488,
+      "minutes": 7.846576197942098,
+      "model_path": "/kaggle/input/models/aisuko/mmbert-small/transformers/default/1",
+      "mean_tokens": 107.34428571428572,
+      "truncated": 0.018660714285714287,
+      "steps": 1050,
+      "devices": 1,
+      "peak_vram_gb": 8.920380416
+    }
+  ],
+  "scores": {
+    "coverage": 0.2,
+    "macro_f1_argmax": 0.9543625485133488,
+    "macro_f1_tuned": 0.9593357112778395,
+    "bias": [
+      0.0,
+      0.5,
+      -3.0
+    ],
+    "public_lb_ci95": [
+      0.9482350602257928,
+      0.9681220287255613
+    ],
+    "per_class": {
+      "precision": {
+        "BENIGN": 0.95982,
+        "JAILBREAK": 0.95277,
+        "PROMPT_INJECTION": 0.99462
+      },
+      "recall": {
+        "BENIGN": 0.97696,
+        "JAILBREAK": 0.92972,
+        "PROMPT_INJECTION": 0.94388
+      },
+      "f1": {
+        "BENIGN": 0.96831,
+        "JAILBREAK": 0.94111,
+        "PROMPT_INJECTION": 0.96859
+      },
+      "support": {
+        "BENIGN": 1736,
+        "JAILBREAK": 868,
+        "PROMPT_INJECTION": 196
+      }
+    },
+    "per_language": {
+      "n": {
+        "en": 281,
+        "fr": 700,
+        "it": 559,
+        "pt": 1260
+      },
+      "macro_f1": {
+        "en": 0.94195,
+        "fr": 0.96975,
+        "it": 0.99087,
+        "pt": 0.94216
+      },
+      "f1_BENIGN": {
+        "en": 0.98006,
+        "fr": 0.98514,
+        "it": 0.99424,
+        "pt": 0.94504
+      },
+      "f1_JAILBREAK": {
+        "en": 0.98864,
+        "fr": 0.97674,
+        "it": 0.99135,
+        "pt": 0.88714
+      },
+      "f1_PROMPT_INJECTION": {
+        "en": 0.85714,
+        "fr": 0.94737,
+        "it": 0.98701,
+        "pt": 0.99429
+      }
+    },
+    "confusion": {
+      "pred_BENIGN": {
+        "true_BENIGN": 1696,
+        "true_JAILBREAK": 61,
+        "true_PROMPT_INJECTION": 10
+      },
+      "pred_JAILBREAK": {
+        "true_BENIGN": 39,
+        "true_JAILBREAK": 807,
+        "true_PROMPT_INJECTION": 1
+      },
+      "pred_PROMPT_INJECTION": {
+        "true_BENIGN": 1,
+        "true_JAILBREAK": 0,
+        "true_PROMPT_INJECTION": 185
+      }
+    }
+  },
+  "holdout": null,
+  "elapsed_minutes": 8.22,
+  "updated_at": "2026-10-21T22:35:06+00:00"
+}

@@ -56,6 +56,8 @@ def main() -> None:
             fp16=False,
             prepend_language=prepend,
             class_weight="balanced",
+            n_gpu=1 if prepend else None,
+            freeze_embeddings=prepend,
         )
         run = run_experiment(exp, str(work), work / "artifacts")
         meta = json.loads((run / "meta.json").read_text())

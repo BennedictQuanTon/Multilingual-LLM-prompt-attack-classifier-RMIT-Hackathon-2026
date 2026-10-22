@@ -112,3 +112,22 @@ def test_build_kernel_final_name_and_tfidf_guard():
     meta = json.loads((ROOT / "kaggle/build/rmit-sgs-gendata-c1/kernel-metadata.json").read_text())
     assert meta["title"] == "RMIT_SGS_GenData_C1"
     assert _build("train", "configs/tfidf.yaml").returncode != 0
+
+
+def test_holdout_protocol_scores_locked_rows_and_merges(data_dir, tmp_path):
+    from rmitguard.data import load_competition, make_split
+
+    train = load_competition(data_dir).train
+    folds = make_split(train, 3, 42, holdout=0.2)
+    assert abs((folds == -1).mean() - 0.2) < 0.03
+    assert set(train.loc[folds == -1, "label"]) == {"BENIGN", "JAILBREAK", "PROMPT_INJECTION"}
+    for part in ([0], [1, 2]):
+        cfg = ExperimentConfig(name="t", model="tfidf", n_folds=3, folds=part, holdout=0.2)
+        run = run_experiment(cfg, str(data_dir), tmp_path / f"m{part[0]}")
+        assert run.name == "t-ho" and (run / "holdout.npy").exists()
+        assert (run / "charts" / "confusion.png").exists() and (run / "top_errors.csv").exists()
+    meta = json.loads(
+        (ensemble([tmp_path], tmp_path / "ens", data_dir=str(data_dir)) / "meta.json").read_text()
+    )
+    assert meta["members"]["t-ho"]["folds_done"] == [0, 1, 2]
+    assert meta["holdout"]["n"] == int((folds == -1).sum()) and meta["holdout"]["macro_f1"] > 0.9

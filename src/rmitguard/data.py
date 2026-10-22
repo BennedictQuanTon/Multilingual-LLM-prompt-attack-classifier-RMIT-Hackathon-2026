@@ -12,7 +12,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import StratifiedGroupKFold
 
 from .constants import COMPETITION, L2I, LABELS
 
@@ -73,13 +72,28 @@ def make_folds(train: pd.DataFrame, n_folds: int, seed: int) -> np.ndarray:
     Stratified on label x language so every fold sees the rare PROMPT_INJECTION class in every language,
     and grouped on the normalised text so duplicated prompts never sit on both sides of a split
     (duplicates across folds inflate CV and make it useless for picking models).
+
+    Implemented with numpy's legacy RandomState, whose stream is frozen across numpy versions, so the split
+    is identical on a laptop and on Kaggle (sklearn's StratifiedGroupKFold gave different folds per version).
     """
-    strata = train["label"].astype(str) + "|" + train["language"].astype(str)
+    strata = (train["label"].astype(str) + "|" + train["language"].astype(str)).to_numpy()
     groups = train["text"].map(text_hash).to_numpy()
+    g = pd.DataFrame({"group": groups, "stratum": strata}).drop_duplicates("group")
+    rng = np.random.RandomState(seed)
+    g = g.iloc[rng.permutation(len(g))]
+    offsets = {s: int(rng.randint(n_folds)) for s in sorted(g["stratum"].unique())}
+    g["fold"] = (g.groupby("stratum").cumcount() + g["stratum"].map(offsets)) % n_folds
+    fold_of = dict(zip(g["group"], g["fold"]))
+    return np.array([fold_of[h] for h in groups], dtype=int)
+
+
+def make_split(train: pd.DataFrame, n_folds: int, seed: int, holdout: float = 0.0) -> np.ndarray:
+    """Fold id per row; -1 marks the locked holdout (stratified + grouped the same way as the folds)."""
+    if not holdout:
+        return make_folds(train, n_folds, seed)
+    is_hold = make_folds(train, round(1 / holdout), seed + 1) == 0
     folds = np.full(len(train), -1, dtype=int)
-    splitter = StratifiedGroupKFold(n_splits=n_folds, shuffle=True, random_state=seed)
-    for k, (_, va) in enumerate(splitter.split(train, strata, groups)):
-        folds[va] = k
+    folds[~is_hold] = make_folds(train[~is_hold].reset_index(drop=True), n_folds, seed)
     return folds
 
 

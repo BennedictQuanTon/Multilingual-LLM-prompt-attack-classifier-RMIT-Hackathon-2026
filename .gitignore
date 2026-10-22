@@ -2,6 +2,10 @@
 data/
 *.csv
 !experiments/*.csv
+!experiments/**/summary.csv
+# raw competition text must stay local
+experiments/**/top_errors.csv
+experiments/00-eda/eda.md
 kaggle.json
 
 # --- run outputs ---
@@ -34,3 +38,6 @@ build/
 .DS_Store
 .idea/
 .vscode/
+
+# --- local assistant instructions (not shared) ---
+CLAUDE.md

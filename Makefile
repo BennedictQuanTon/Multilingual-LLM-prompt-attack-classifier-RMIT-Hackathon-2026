@@ -8,6 +8,9 @@ KERNEL ?=
 VERSION ?=
 MSG ?=
 SOURCES ?=
+HOLDOUT ?=
+ONLY ?=
+TIMEOUT ?= 3600
 
 .DEFAULT_GOAL := help
 .PHONY: help setup check lint fmt test smoke data eda baseline build build-final push push-ensemble status output ensemble validate submit-dry submit
@@ -52,18 +55,18 @@ baseline: ## TF-IDF 5-fold CV on CPU: sanity check + CV floor (never submitted)
 
 # ----------------------------------------------------------------- Kaggle
 build: ## build notebook: make build CONFIG=configs/xlmr-large.yaml [FOLDS=0,1]
-	$(RUN) python tools/build_kernel.py train $(CONFIG) $(if $(FOLDS),--folds $(FOLDS))
+	$(RUN) python tools/build_kernel.py train $(CONFIG) $(if $(FOLDS),--folds $(FOLDS)) $(if $(HOLDOUT),--holdout $(HOLDOUT))
 
 build-final: ## build the official RMIT_SGS_GenData_C1 notebook from CONFIG
 	$(RUN) python tools/build_kernel.py train $(CONFIG) --final
 
-push: ## build + push + start on Kaggle (T4 x2): make push CONFIG=... [FOLDS=0]
-	@dir=$$($(RUN) python tools/build_kernel.py train $(CONFIG) $(if $(FOLDS),--folds $(FOLDS)) | awk '/^built/{print $$2}'); \
-	echo "pushing $$dir"; $(RUN) kaggle kernels push -p "$$dir"
+push: ## build + push + start on Kaggle: make push CONFIG=... [FOLDS=0] [HOLDOUT=0.2] [TIMEOUT=3600]
+	@dir=$$($(RUN) python tools/build_kernel.py train $(CONFIG) $(if $(FOLDS),--folds $(FOLDS)) $(if $(HOLDOUT),--holdout $(HOLDOUT)) | awk '/^built/{print $$2}'); \
+	echo "pushing $$dir (timeout $(TIMEOUT)s)"; $(RUN) kaggle kernels push -p "$$dir" -t $(TIMEOUT)
 
 push-ensemble: ## merge teammates' runs on Kaggle: make push-ensemble SOURCES=user/a,user/b
-	@dir=$$($(RUN) python tools/build_kernel.py ensemble --sources $(SOURCES) | awk '/^built/{print $$2}'); \
-	$(RUN) kaggle kernels push -p "$$dir"
+	@dir=$$($(RUN) python tools/build_kernel.py ensemble --sources $(SOURCES) $(if $(ONLY),--only $(ONLY)) | awk '/^built/{print $$2}'); \
+	$(RUN) kaggle kernels push -p "$$dir" -t $(TIMEOUT)
 
 status: ## make status KERNEL=user/slug
 	$(RUN) kaggle kernels status $(KERNEL)
@@ -73,7 +76,7 @@ output: ## download a kernel's output to outputs/<slug>: make output KERNEL=user
 	$(RUN) kaggle kernels output $(KERNEL) -p outputs/$(notdir $(KERNEL))
 
 ensemble: ## merge local run dirs: make ensemble SOURCES="outputs/a outputs/b"
-	$(RUN) rmitguard ensemble $(SOURCES)
+	$(RUN) rmitguard ensemble $(SOURCES) $(if $(ONLY),--only $(ONLY))
 
 validate: ## make validate FILE=path/to/submission.csv
 	$(RUN) rmitguard validate $(FILE)

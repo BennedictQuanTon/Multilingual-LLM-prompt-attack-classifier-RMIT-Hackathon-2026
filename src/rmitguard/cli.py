@@ -28,12 +28,14 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--limit", type=int, default=None, help="train on a small stratified subset (smoke test)")
     p.add_argument("--out", default="artifacts")
     p.add_argument("--name", default=None, help="override the experiment name")
+    p.add_argument("--holdout", type=float, default=None, help="lock this share of train away, e.g. 0.2")
 
     p = sub.add_parser("ensemble", help="merge fold subsets / runs that share a CV split")
     p.add_argument("runs", nargs="+", help="run directories or roots to search for them")
     p.add_argument("--out", default="artifacts/ensemble")
     p.add_argument("--weights", default=None, help="name=weight,name=weight")
     p.add_argument("--allow-multi-backbone", action="store_true")
+    p.add_argument("--only", default=None, help="comma-separated run names to keep, e.g. mmbert-base")
 
     p = sub.add_parser("validate", help="check a submission CSV before spending a submission on it")
     p.add_argument("submission")
@@ -50,7 +52,7 @@ def main(argv: list[str] | None = None) -> int:
         from .config import load_config
         from .runner import run_experiment
 
-        cfg = load_config(args.config, folds=_folds(args.folds), name=args.name)
+        cfg = load_config(args.config, folds=_folds(args.folds), name=args.name, holdout=args.holdout)
         run_experiment(cfg, data_dir=args.data, out_dir=args.out, limit=args.limit)
     elif args.cmd == "ensemble":
         from .ensemble import ensemble
@@ -66,6 +68,7 @@ def main(argv: list[str] | None = None) -> int:
             data_dir=args.data,
             weights=weights,
             allow_multi_backbone=args.allow_multi_backbone,
+            only=args.only.split(",") if args.only else None,
         )
     elif args.cmd == "validate":
         import pandas as pd

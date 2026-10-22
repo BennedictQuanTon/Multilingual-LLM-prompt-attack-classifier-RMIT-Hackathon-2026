@@ -1,0 +1,154 @@
+{
+  "name": "distilbert-mbert",
+  "model": "distilbert-mbert",
+  "hf_id": "distilbert/distilbert-base-multilingual-cased",
+  "config": {
+    "name": "distilbert-mbert",
+    "model": "distilbert-mbert",
+    "seed": 42,
+    "split_seed": 42,
+    "n_folds": 5,
+    "folds": [
+      0
+    ],
+    "holdout": 0.0,
+    "max_len": 512,
+    "head_len": 384,
+    "prepend_language": false,
+    "lr": 5e-05,
+    "epochs": 3,
+    "batch_size": 32,
+    "grad_accum": 1,
+    "warmup_ratio": 0.1,
+    "weight_decay": 0.01,
+    "class_weight": "sqrt",
+    "label_smoothing": 0.0,
+    "grad_ckpt": false,
+    "n_gpu": null,
+    "freeze_embeddings": false,
+    "fp16": true,
+    "lora": {
+      "r": 16,
+      "alpha": 32,
+      "dropout": 0.05
+    },
+    "tfidf": {
+      "C": 8.0
+    },
+    "time_budget_hours": 11.0,
+    "evals_per_epoch": 4,
+    "train_probe": 512,
+    "notes": ""
+  },
+  "split_fp": "10a79e50dde8",
+  "n_train": 14000,
+  "n_holdout": 0,
+  "n_test": 6000,
+  "folds_done": [
+    0
+  ],
+  "n_test_models": 1,
+  "fold_stats": [
+    {
+      "fold": 0,
+      "n_train": 11200,
+      "n_val": 2800,
+      "macro_f1": 0.9200505739038035,
+      "minutes": 5.235639194647471,
+      "model_path": "/kaggle/input/models/aisuko/distilbert-base-multilingual-cased/transformers/default/1",
+      "mean_tokens": 122.30491071428571,
+      "truncated": 0.025982142857142856,
+      "steps": 1050,
+      "devices": 1,
+      "peak_vram_gb": 5.227577856
+    }
+  ],
+  "scores": {
+    "coverage": 0.2,
+    "macro_f1_argmax": 0.9200505739038035,
+    "macro_f1_tuned": 0.923733630496684,
+    "bias": [
+      0.0,
+      0.6,
+      0.5
+    ],
+    "public_lb_ci95": [
+      0.9078746963512738,
+      0.9368221254703352
+    ],
+    "per_class": {
+      "precision": {
+        "BENIGN": 0.95452,
+        "JAILBREAK": 0.87991,
+        "PROMPT_INJECTION": 0.93717
+      },
+      "recall": {
+        "BENIGN": 0.93088,
+        "JAILBREAK": 0.92857,
+        "PROMPT_INJECTION": 0.91327
+      },
+      "f1": {
+        "BENIGN": 0.94255,
+        "JAILBREAK": 0.90359,
+        "PROMPT_INJECTION": 0.92506
+      },
+      "support": {
+        "BENIGN": 1736,
+        "JAILBREAK": 868,
+        "PROMPT_INJECTION": 196
+      }
+    },
+    "per_language": {
+      "n": {
+        "en": 281,
+        "fr": 700,
+        "it": 559,
+        "pt": 1260
+      },
+      "macro_f1": {
+        "en": 0.89125,
+        "fr": 0.95589,
+        "it": 0.95767,
+        "pt": 0.89791
+      },
+      "f1_BENIGN": {
+        "en": 0.96866,
+        "fr": 0.98278,
+        "it": 0.97983,
+        "pt": 0.89623
+      },
+      "f1_JAILBREAK": {
+        "en": 0.98286,
+        "fr": 0.98165,
+        "it": 0.97959,
+        "pt": 0.81446
+      },
+      "f1_PROMPT_INJECTION": {
+        "en": 0.72222,
+        "fr": 0.90323,
+        "it": 0.91358,
+        "pt": 0.98305
+      }
+    },
+    "confusion": {
+      "pred_BENIGN": {
+        "true_BENIGN": 1616,
+        "true_JAILBREAK": 62,
+        "true_PROMPT_INJECTION": 15
+      },
+      "pred_JAILBREAK": {
+        "true_BENIGN": 108,
+        "true_JAILBREAK": 806,
+        "true_PROMPT_INJECTION": 2
+      },
+      "pred_PROMPT_INJECTION": {
+        "true_BENIGN": 12,
+        "true_JAILBREAK": 0,
+        "true_PROMPT_INJECTION": 179
+      }
+    }
+  },
+  "holdout": null,
+  "elapsed_minutes": 5.59,
+  "updated_at": "2026-10-21T22:32:28+00:00"
+}

@@ -1,0 +1,154 @@
+{
+  "name": "rembert",
+  "model": "rembert",
+  "hf_id": "google/rembert",
+  "config": {
+    "name": "rembert",
+    "model": "rembert",
+    "seed": 42,
+    "split_seed": 42,
+    "n_folds": 5,
+    "folds": [
+      0
+    ],
+    "holdout": 0.0,
+    "max_len": 512,
+    "head_len": 384,
+    "prepend_language": false,
+    "lr": 1e-05,
+    "epochs": 3,
+    "batch_size": 8,
+    "grad_accum": 4,
+    "warmup_ratio": 0.1,
+    "weight_decay": 0.01,
+    "class_weight": "sqrt",
+    "label_smoothing": 0.0,
+    "grad_ckpt": true,
+    "n_gpu": 1,
+    "freeze_embeddings": true,
+    "fp16": true,
+    "lora": {
+      "r": 16,
+      "alpha": 32,
+      "dropout": 0.05
+    },
+    "tfidf": {
+      "C": 8.0
+    },
+    "time_budget_hours": 11.0,
+    "evals_per_epoch": 4,
+    "train_probe": 512,
+    "notes": ""
+  },
+  "split_fp": "10a79e50dde8",
+  "n_train": 14000,
+  "n_holdout": 0,
+  "n_test": 6000,
+  "folds_done": [
+    0
+  ],
+  "n_test_models": 1,
+  "fold_stats": [
+    {
+      "fold": 0,
+      "n_train": 11200,
+      "n_val": 2800,
+      "macro_f1": 0.9443234093463451,
+      "minutes": 46.59532589912415,
+      "model_path": "/kaggle/input/models/aisuko/rembert/transformers/default/1",
+      "mean_tokens": 108.47598214285715,
+      "truncated": 0.018482142857142857,
+      "steps": 1050,
+      "devices": 1,
+      "peak_vram_gb": 10.655224832
+    }
+  ],
+  "scores": {
+    "coverage": 0.2,
+    "macro_f1_argmax": 0.9443234093463451,
+    "macro_f1_tuned": 0.9548884105666257,
+    "bias": [
+      0.0,
+      1.75,
+      -2.8
+    ],
+    "public_lb_ci95": [
+      0.9417518663163916,
+      0.9662953586456207
+    ],
+    "per_class": {
+      "precision": {
+        "BENIGN": 0.96548,
+        "JAILBREAK": 0.93707,
+        "PROMPT_INJECTION": 0.97872
+      },
+      "recall": {
+        "BENIGN": 0.96659,
+        "JAILBREAK": 0.94355,
+        "PROMPT_INJECTION": 0.93878
+      },
+      "f1": {
+        "BENIGN": 0.96603,
+        "JAILBREAK": 0.9403,
+        "PROMPT_INJECTION": 0.95833
+      },
+      "support": {
+        "BENIGN": 1736,
+        "JAILBREAK": 868,
+        "PROMPT_INJECTION": 196
+      }
+    },
+    "per_language": {
+      "n": {
+        "en": 281,
+        "fr": 700,
+        "it": 559,
+        "pt": 1260
+      },
+      "macro_f1": {
+        "en": 0.91725,
+        "fr": 0.98278,
+        "it": 0.96732,
+        "pt": 0.941
+      },
+      "f1_BENIGN": {
+        "en": 0.97421,
+        "fr": 0.9908,
+        "it": 0.98413,
+        "pt": 0.94238
+      },
+      "f1_JAILBREAK": {
+        "en": 0.97753,
+        "fr": 0.98845,
+        "it": 0.98276,
+        "pt": 0.88633
+      },
+      "f1_PROMPT_INJECTION": {
+        "en": 0.8,
+        "fr": 0.96907,
+        "it": 0.93506,
+        "pt": 0.99429
+      }
+    },
+    "confusion": {
+      "pred_BENIGN": {
+        "true_BENIGN": 1678,
+        "true_JAILBREAK": 49,
+        "true_PROMPT_INJECTION": 11
+      },
+      "pred_JAILBREAK": {
+        "true_BENIGN": 54,
+        "true_JAILBREAK": 819,
+        "true_PROMPT_INJECTION": 1
+      },
+      "pred_PROMPT_INJECTION": {
+        "true_BENIGN": 4,
+        "true_JAILBREAK": 0,
+        "true_PROMPT_INJECTION": 184
+      }
+    }
+  },
+  "holdout": null,
+  "elapsed_minutes": 46.77,
+  "updated_at": "2026-10-21T23:21:58+00:00"
+}

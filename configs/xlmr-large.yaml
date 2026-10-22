@@ -1,12 +1,19 @@
-# Main candidate. Strongest multilingual encoder on the list. ~30 min/fold on T4 x2.
+# Main candidate. Strongest multilingual encoder on the list.
+# Run 1 (2 GPUs, DataParallel, bs 8x2) hit CUDA OOM on GPU 0 at the first backward: weights + Adam + the
+# gradient reduction all live on GPU 0. Now: one GPU, frozen 250k-token embedding matrix, gradient checkpointing.
+# Run 2 (lr 1e-5, 3 epochs): val macro F1 0.70 -> 0.89 -> 0.94 per epoch, loss still falling = under-trained
+# -> lr 1.5e-5, 4 epochs.
 # If loss stays flat at ~1.0 in epoch 1 (XLM-R large sometimes fails to start), lower lr to 8e-6 and re-run.
 name: xlmr-large
 model: xlmr-large
 max_len: 512
 head_len: 384
-lr: 1.0e-5
-epochs: 3
+lr: 1.5e-5
+epochs: 4
 batch_size: 8
-grad_accum: 2
+grad_accum: 4
 warmup_ratio: 0.1
 class_weight: sqrt
+n_gpu: 1
+freeze_embeddings: true
+grad_ckpt: true

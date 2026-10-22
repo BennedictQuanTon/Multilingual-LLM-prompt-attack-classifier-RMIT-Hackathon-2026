@@ -1,0 +1,10 @@
+# Small ModernBERT (384 hidden, 22 layers): fast multilingual reference.
+name: mmbert-small
+model: mmbert-small
+max_len: 512
+head_len: 384
+lr: 5.0e-5
+epochs: 3
+batch_size: 32
+grad_accum: 1
+class_weight: sqrt

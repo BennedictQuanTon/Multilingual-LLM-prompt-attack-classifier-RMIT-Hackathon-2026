@@ -1,0 +1,10 @@
+# Organisers' "fastest baseline": 6-layer multilingual DistilBERT.
+name: distilbert-mbert
+model: distilbert-mbert
+max_len: 512
+head_len: 384
+lr: 5.0e-5
+epochs: 3
+batch_size: 32
+grad_accum: 1
+class_weight: sqrt

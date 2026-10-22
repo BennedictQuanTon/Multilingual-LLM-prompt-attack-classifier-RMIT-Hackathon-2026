@@ -1,0 +1,11 @@
+# auto-generated variant of configs/mmbert-base.yaml: {'class_weight': 'none'}
+name: mmbert-base-cw0
+model: mmbert-base
+max_len: 512
+head_len: 384
+lr: 3.0e-05
+epochs: 3
+batch_size: 16
+grad_accum: 1
+class_weight: none
+freeze_embeddings: true

@@ -20,6 +20,7 @@ class ExperimentConfig:
     split_seed: int = 42  # CV split: keep it fixed so every run of the team can be merged
     n_folds: int = 5
     folds: list[int] | None = None  # None = all folds; a subset lets teammates split the work
+    holdout: float = 0.0  # 0.2 = lock 20% of train away as a private-LB stand-in (benchmark protocol)
     # Tokenisation: long prompts keep head + tail (role-play set-up at the start, real request at the end).
     max_len: int = 512
     head_len: int = 384
@@ -34,6 +35,11 @@ class ExperimentConfig:
     class_weight: str = "sqrt"  # none | sqrt | balanced
     label_smoothing: float = 0.0
     grad_ckpt: bool = False
+    # Memory: DataParallel keeps weights + optimizer + the gradient reduction on GPU 0, which overflows a T4
+    # for xlmr-large. n_gpu: 1 trains on one GPU; freeze_embeddings drops the 250k-token embedding matrix
+    # (~half of the parameters of XLM-R / mmBERT) from the optimizer.
+    n_gpu: int | None = None
+    freeze_embeddings: bool = False
     fp16: bool = True
     # LLM route only (kind == "llm"): 4-bit base + LoRA adapters + classification head
     lora: dict[str, Any] = field(default_factory=lambda: {"r": 16, "alpha": 32, "dropout": 0.05})
@@ -41,6 +47,10 @@ class ExperimentConfig:
     tfidf: dict[str, Any] = field(default_factory=lambda: {"C": 8.0})
     # Stop starting new folds when the next one would not finish inside Kaggle's 12 h limit.
     time_budget_hours: float = 11.0
+    # Training-health logging: evaluations per epoch on the validation fold and on a fixed train probe
+    # (same loss computation on both, so train vs eval loss is directly comparable -> over/under-fitting).
+    evals_per_epoch: int = 4
+    train_probe: int = 512
     notes: str = ""
 
     def __post_init__(self) -> None:
@@ -52,6 +62,8 @@ class ExperimentConfig:
             raise ValueError(f"class_weight must be none|sqrt|balanced, got {self.class_weight!r}")
         if self.folds is not None and any(not 0 <= k < self.n_folds for k in self.folds):
             raise ValueError(f"folds {self.folds} out of range for n_folds={self.n_folds}")
+        if not 0 <= self.holdout < 0.5:
+            raise ValueError("holdout must be in [0, 0.5)")
         if not 0 < self.head_len <= self.max_len:
             raise ValueError("need 0 < head_len <= max_len")
 

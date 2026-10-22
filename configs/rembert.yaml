@@ -1,0 +1,15 @@
+# RemBERT: 32 layers x 1152 hidden (~470M non-embedding params). Organisers: use batch size 8.
+# Same memory treatment as xlmr-large: one GPU + gradient checkpointing.
+name: rembert
+model: rembert
+max_len: 512
+head_len: 384
+lr: 1.0e-5
+epochs: 3
+batch_size: 8
+grad_accum: 4
+warmup_ratio: 0.1
+class_weight: sqrt
+n_gpu: 1
+freeze_embeddings: true
+grad_ckpt: true

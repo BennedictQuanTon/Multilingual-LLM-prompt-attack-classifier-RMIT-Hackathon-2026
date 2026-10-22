@@ -16,7 +16,7 @@ import numpy as np
 
 from .data import load_competition
 from .postprocess import predict_with_bias
-from .runner import _jsonable, score_oof, write_report
+from .runner import _jsonable, predictions_frame, score_holdout, score_oof, write_report
 from .submission import make_submission, validate_submission
 
 
@@ -34,7 +34,14 @@ def find_runs(roots: list[str | Path]) -> list[Path]:
 
 def load_run(run_dir: Path) -> dict:
     meta = json.loads((run_dir / "meta.json").read_text(encoding="utf-8"))
-    return dict(dir=run_dir, meta=meta, oof=np.load(run_dir / "oof.npy"), test=np.load(run_dir / "test.npy"))
+    hold = run_dir / "holdout.npy"
+    return dict(
+        dir=run_dir,
+        meta=meta,
+        oof=np.load(run_dir / "oof.npy"),
+        test=np.load(run_dir / "test.npy"),
+        holdout=np.load(hold) if hold.exists() else None,
+    )
 
 
 def merge_fold_subsets(runs: list[dict]) -> dict[str, dict]:
@@ -45,7 +52,7 @@ def merge_fold_subsets(runs: list[dict]) -> dict[str, dict]:
     merged = {}
     for name, parts in by_name.items():
         oof = np.full_like(parts[0]["oof"], np.nan)
-        test_sum, n_models, folds_done, model = 0.0, 0, [], parts[0]["meta"]["model"]
+        test_sum, hold_sum, n_models, folds_done, model = 0.0, 0.0, 0, [], parts[0]["meta"]["model"]
         for p in parts:
             overlap = sorted(set(p["meta"]["folds_done"]) & set(folds_done))
             if overlap:
@@ -54,11 +61,14 @@ def merge_fold_subsets(runs: list[dict]) -> dict[str, dict]:
             m = ~np.isnan(p["oof"]).any(axis=1)
             oof[m] = p["oof"][m]
             test_sum = test_sum + p["test"] * p["meta"]["n_test_models"]
+            if p["holdout"] is not None:
+                hold_sum = hold_sum + p["holdout"] * p["meta"]["n_test_models"]
             n_models += p["meta"]["n_test_models"]
             folds_done += p["meta"]["folds_done"]
         merged[name] = dict(
             oof=oof,
             test=test_sum / n_models,
+            holdout=None if parts[0]["holdout"] is None else hold_sum / n_models,
             folds_done=sorted(folds_done),
             model=model,
             sources=[str(p["dir"]) for p in parts],
@@ -72,10 +82,13 @@ def ensemble(
     data_dir: str | None = None,
     weights: dict[str, float] | None = None,
     allow_multi_backbone: bool = False,
+    only: list[str] | None = None,
 ) -> Path:
     runs = [
         r for r in (load_run(d) for d in find_runs(roots)) if "members" not in r["meta"]
     ]  # skip old ensembles
+    if only:  # e.g. only the B* runs out of a benchmark notebook that trained several models
+        runs = [r for r in runs if r["meta"]["name"] in only]
     if not runs:
         raise FileNotFoundError(f"no run directories under {roots}")
     fps = {r["meta"]["split_fp"] for r in runs}
@@ -101,8 +114,15 @@ def ensemble(
     oof = sum(w[n] * m["oof"] for n, m in merged.items()) / total  # NaN wherever any member lacks a fold
     test_p = sum(w[n] * m["test"] for n, m in merged.items()) / total
 
-    scores = score_oof(oof, y, folds, train["language"].astype(str).to_numpy())
-    sub = make_submission(test["id"], predict_with_bias(test_p, np.asarray(scores["bias"])))
+    language = train["language"].astype(str).to_numpy()
+    scores = score_oof(oof, y, folds, language)
+    bias = np.asarray(scores["bias"])
+    hold = folds == -1
+    holdout = None
+    if hold.any():
+        hold_p = sum(w[n] * m["holdout"] for n, m in merged.items()) / total
+        holdout = score_holdout(hold_p, y[hold], language[hold], bias)
+    sub = make_submission(test["id"], predict_with_bias(test_p, bias))
     problems = validate_submission(sub, test["id"], expected_rows=len(test))
     if problems:
         raise RuntimeError(f"invalid submission: {problems}")
@@ -112,6 +132,15 @@ def ensemble(
     np.save(out / "oof.npy", oof.astype(np.float32))
     np.save(out / "test.npy", test_p.astype(np.float32))
     np.save(out / "folds.npy", folds)
+    if holdout is not None:
+        np.save(out / "holdout.npy", hold_p.astype(np.float32))
+        predictions_frame(train[hold], hold_p, predict_with_bias(hold_p, bias)).to_csv(
+            out / "holdout_predictions.csv", index=False
+        )
+    m = ~np.isnan(oof).any(axis=1)
+    predictions_frame(train[m], oof[m], predict_with_bias(oof[m], bias)).to_csv(
+        out / "oof_predictions.csv", index=False
+    )
     sub.to_csv(out / "submission.csv", index=False)
     members = {
         n: dict(weight=w[n], folds_done=m["folds_done"], model=m["model"], sources=m["sources"])
@@ -127,6 +156,7 @@ def ensemble(
                 n_train=len(train),
                 n_test=len(test),
                 scores=_jsonable(scores),
+                holdout=_jsonable(holdout),
                 updated_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
             ),
             indent=2,
@@ -144,6 +174,7 @@ def ensemble(
         scores,
         sub,
         [],
+        holdout,
     )
     print((out / "report.md").read_text(encoding="utf-8"))
     return out

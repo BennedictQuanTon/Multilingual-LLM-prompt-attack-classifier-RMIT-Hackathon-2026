@@ -1,0 +1,12 @@
+# mmBERT-base (ModernBERT, 256k multilingual vocab) already fine-tuned for prompt injection (2-class head,
+# re-initialised to 3 classes). Same memory profile as mmbert-base.
+name: wolf-defender
+model: wolf-defender
+max_len: 512
+head_len: 384
+lr: 3.0e-5
+epochs: 3
+batch_size: 16
+grad_accum: 1
+class_weight: sqrt
+freeze_embeddings: true

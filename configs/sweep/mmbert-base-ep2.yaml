@@ -1,0 +1,11 @@
+# auto-generated variant of configs/mmbert-base.yaml: {'epochs': 2}
+name: mmbert-base-ep2
+model: mmbert-base
+max_len: 512
+head_len: 384
+lr: 3.0e-05
+epochs: 2
+batch_size: 16
+grad_accum: 1
+class_weight: sqrt
+freeze_embeddings: true
