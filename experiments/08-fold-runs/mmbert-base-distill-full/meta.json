@@ -1,0 +1,157 @@
+{
+  "name": "mmbert-base-distill-full",
+  "model": "mmbert-base",
+  "hf_id": "jhu-clsp/mmBERT-base",
+  "config": {
+    "name": "mmbert-base-distill-full",
+    "model": "mmbert-base",
+    "seed": 42,
+    "split_seed": 42,
+    "n_folds": 5,
+    "folds": [
+      0
+    ],
+    "holdout": 0.0,
+    "max_len": 512,
+    "head_len": 384,
+    "prepend_language": false,
+    "lr": 3e-05,
+    "epochs": 3,
+    "batch_size": 16,
+    "grad_accum": 1,
+    "warmup_ratio": 0.1,
+    "weight_decay": 0.01,
+    "class_weight": "sqrt",
+    "label_smoothing": 0.0,
+    "grad_ckpt": false,
+    "n_gpu": null,
+    "freeze_embeddings": true,
+    "fp16": true,
+    "lora": {
+      "r": 16,
+      "alpha": 32,
+      "dropout": 0.05
+    },
+    "tfidf": {
+      "C": 8.0
+    },
+    "time_budget_hours": 11.0,
+    "evals_per_epoch": 4,
+    "train_probe": 512,
+    "full_fit": true,
+    "soft_targets": "artifacts/teacher/teacher_oof.npy",
+    "distill_alpha": 0.5,
+    "notes": ""
+  },
+  "split_fp": "10a79e50dde8",
+  "n_train": 14000,
+  "n_holdout": 0,
+  "n_test": 6000,
+  "folds_done": [
+    0
+  ],
+  "n_test_models": 1,
+  "fold_stats": [
+    {
+      "fold": 0,
+      "n_train": 14000,
+      "n_val": 2800,
+      "macro_f1": 0.9864441197851602,
+      "minutes": 13.662686840693157,
+      "model_path": "/kaggle/input/models/aisuko/mmbert-base/transformers/default/1",
+      "mean_tokens": 107.83185714285715,
+      "truncated": 0.019428571428571427,
+      "steps": 2625,
+      "devices": 1,
+      "peak_vram_gb": 7.619743232
+    }
+  ],
+  "scores": {
+    "coverage": 0.2,
+    "macro_f1_argmax": 0.9864441197851602,
+    "macro_f1_tuned": 0.9889844751242717,
+    "bias": [
+      0.0,
+      -1.0,
+      0.0
+    ],
+    "public_lb_ci95": [
+      0.9821678290020589,
+      0.9943314120090049
+    ],
+    "per_class": {
+      "precision": {
+        "BENIGN": 0.98911,
+        "JAILBREAK": 0.98955,
+        "PROMPT_INJECTION": 0.99485
+      },
+      "recall": {
+        "BENIGN": 0.99424,
+        "JAILBREAK": 0.98157,
+        "PROMPT_INJECTION": 0.98469
+      },
+      "f1": {
+        "BENIGN": 0.99167,
+        "JAILBREAK": 0.98554,
+        "PROMPT_INJECTION": 0.98974
+      },
+      "support": {
+        "BENIGN": 1736,
+        "JAILBREAK": 868,
+        "PROMPT_INJECTION": 196
+      }
+    },
+    "per_language": {
+      "n": {
+        "en": 281,
+        "fr": 700,
+        "it": 559,
+        "pt": 1260
+      },
+      "macro_f1": {
+        "en": 0.98055,
+        "fr": 0.99388,
+        "it": 0.99241,
+        "pt": 0.98651
+      },
+      "f1_BENIGN": {
+        "en": 0.99429,
+        "fr": 0.99655,
+        "it": 0.99567,
+        "pt": 0.98662
+      },
+      "f1_JAILBREAK": {
+        "en": 1.0,
+        "fr": 0.99539,
+        "it": 0.99422,
+        "pt": 0.9729
+      },
+      "f1_PROMPT_INJECTION": {
+        "en": 0.94737,
+        "fr": 0.98969,
+        "it": 0.98734,
+        "pt": 1.0
+      }
+    },
+    "confusion": {
+      "pred_BENIGN": {
+        "true_BENIGN": 1726,
+        "true_JAILBREAK": 16,
+        "true_PROMPT_INJECTION": 3
+      },
+      "pred_JAILBREAK": {
+        "true_BENIGN": 9,
+        "true_JAILBREAK": 852,
+        "true_PROMPT_INJECTION": 0
+      },
+      "pred_PROMPT_INJECTION": {
+        "true_BENIGN": 1,
+        "true_JAILBREAK": 0,
+        "true_PROMPT_INJECTION": 193
+      }
+    }
+  },
+  "holdout": null,
+  "elapsed_minutes": 13.85,
+  "updated_at": "2026-10-22T06:51:13+00:00"
+}

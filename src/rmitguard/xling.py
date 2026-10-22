@@ -17,7 +17,9 @@ import numpy as np
 from .constants import APPROVED_MODELS
 
 LAYER = 11  # middle layer: more language-neutral than the last one
-THRESHOLD = 0.78  # fold 0: fixes 3 errors, breaks none (0.75 breaks 1, 0.72 breaks 8)
+# 5-fold OOF (14k rows, mmbert-base-s2): 0.85 fixes 5 errors and breaks none; 0.78 (picked on fold 0 alone)
+# fixes 10 but also breaks 10
+THRESHOLD = 0.85
 
 
 def embed(

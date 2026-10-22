@@ -51,6 +51,12 @@ class ExperimentConfig:
     # (same loss computation on both, so train vs eval loss is directly comparable -> over/under-fitting).
     evals_per_epoch: int = 4
     train_probe: int = 512
+    # Single-model submission: train on every dev row (the fold-k rows are still evaluated, but in-sample)
+    full_fit: bool = False
+    # Distillation: .npy of teacher probabilities (out-of-fold, one row per train.csv row); the training
+    # target is distill_alpha * one-hot label + (1 - distill_alpha) * teacher
+    soft_targets: str | None = None
+    distill_alpha: float = 0.5
     notes: str = ""
 
     def __post_init__(self) -> None:

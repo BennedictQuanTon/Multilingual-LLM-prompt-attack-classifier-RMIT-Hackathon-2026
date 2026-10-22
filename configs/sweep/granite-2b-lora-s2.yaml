@@ -1,0 +1,19 @@
+# LLM route (2025 lesson: QLoRA LLM classifier was the best single model). Slow: screen on fold 0 first.
+# One GPU only; ~2-3 h per fold at 14k rows. Use when an encoder plateaus and there is time left.
+name: granite-2b-lora-s2
+seed: 7  # second Granite seed: more LLM models averaged on the hard pt rows
+model: granite-2b
+folds: [0]
+max_len: 512
+head_len: 384
+lr: 1.0e-4
+epochs: 1
+batch_size: 4
+grad_accum: 4
+warmup_ratio: 0.05
+class_weight: sqrt
+lora: {r: 16, alpha: 32, dropout: 0.05}
+time_budget_hours: 11.0
+# LLM evaluation over 2,800 rows is expensive: 2 checkpoints per epoch, smaller train probe
+evals_per_epoch: 2
+train_probe: 256

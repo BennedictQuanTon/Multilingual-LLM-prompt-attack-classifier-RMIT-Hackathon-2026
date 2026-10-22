@@ -96,8 +96,8 @@ def encode(tokenizer, df: pd.DataFrame, cfg: ExperimentConfig) -> list[list[int]
 
 def to_dataset(ids: list[list[int]], labels: np.ndarray | None = None) -> Dataset:
     data = {"input_ids": ids, "attention_mask": [[1] * len(x) for x in ids]}
-    if labels is not None:
-        data["labels"] = [int(v) for v in labels]
+    if labels is not None:  # class ids, or (n, n_classes) probabilities for distillation
+        data["labels"] = [int(v) for v in labels] if labels.ndim == 1 else labels.astype(np.float32).tolist()
     return Dataset.from_dict(data)
 
 
@@ -277,6 +277,9 @@ def train_fold(
     if is_llm:
         tokenizer.padding_side = "right"
 
+    y_hard = (
+        y_train if y_train.ndim == 1 else y_train.argmax(1)
+    )  # soft targets: class weights / probe use ids
     tr_ids, va_ids, te_ids = (encode(tokenizer, df, cfg) for df in (train_df, val_df, test_df))
     n_tok = np.array([len(x) for x in tr_ids])
     truncated = float(np.mean(n_tok >= cfg.max_len))
@@ -328,12 +331,12 @@ def train_fold(
         # same loss on a fixed train sample and on the validation fold -> over/under-fitting is visible
         eval_dataset={
             "val": to_dataset(va_ids, y_val),
-            "train": to_dataset([tr_ids[i] for i in probe], y_train[probe]),
+            "train": to_dataset([tr_ids[i] for i in probe], y_hard[probe]),
         },
         data_collator=DataCollatorWithPadding(tokenizer),
         compute_metrics=eval_metrics,
         callbacks=[HealthCallback()],
-        class_weights=class_weights(y_train, cfg.class_weight),
+        class_weights=class_weights(y_hard, cfg.class_weight),
         label_smoothing=cfg.label_smoothing,
     )
     trainer.train()

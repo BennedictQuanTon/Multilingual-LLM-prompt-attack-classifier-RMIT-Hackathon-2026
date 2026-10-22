@@ -113,11 +113,26 @@ def ensemble(
         raise ValueError("runs were made on a different (sub)set of train.csv (e.g. --limit)")
     folds = np.load(runs[0]["dir"] / "folds.npy")
     w = {name: (weights or {}).get(name, 1.0) for name in merged}
-    total = sum(w.values())
-    oof = sum(w[n] * m["oof"] for n, m in merged.items()) / total  # NaN wherever any member lacks a fold
-    test_p = sum(w[n] * m["test"] for n, m in merged.items()) / total
-
     language = train["language"].astype(str).to_numpy()
+
+    def row_weights(langs: np.ndarray) -> dict[str, np.ndarray]:
+        """A weight is a number or {language: weight, "*": default} (e.g. an LLM that is only strong in pt)."""
+        out = {}
+        for n, v in w.items():
+            if isinstance(v, dict):
+                out[n] = np.array([v.get(lang, v.get("*", 1.0)) for lang in langs], dtype=float)[:, None]
+            else:
+                out[n] = np.full((len(langs), 1), float(v))
+        return out
+
+    def blend(key: str, langs: np.ndarray) -> np.ndarray:
+        rw = row_weights(langs)
+        total = sum(rw.values())
+        # a member with weight 0 on a row never contributes, not even its NaN (rows outside its folds)
+        return sum(np.where(rw[n] > 0, rw[n] * m[key], 0.0) for n, m in merged.items()) / total
+
+    oof = blend("oof", language)  # NaN wherever a weighted member lacks that row's fold
+    test_p = blend("test", test["language"].astype(str).to_numpy())
     xling_info = None
     if xling == "auto":  # an xling.npz next to the runs (e.g. from a Kaggle input) is picked up automatically
         hits = [p for r in roots for p in Path(r).rglob("xling.npz")] if roots else []
@@ -148,7 +163,7 @@ def ensemble(
     hold = folds == -1
     holdout = None
     if hold.any():
-        hold_p = sum(w[n] * m["holdout"] for n, m in merged.items()) / total
+        hold_p = blend("holdout", language[hold])
         holdout = score_holdout(hold_p, y[hold], language[hold], bias)
     sub = make_submission(test["id"], predict_with_bias(test_p, bias))
     problems = validate_submission(sub, test["id"], expected_rows=len(test))

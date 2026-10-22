@@ -1,0 +1,14 @@
+# Distillation check: trained on folds 1-4 with soft targets from the 7x mmbert-base + TF-IDF ensemble (OOF), scored on fold 0
+name: mmbert-base-distill
+model: mmbert-base
+max_len: 512
+head_len: 384
+lr: 3.0e-5
+epochs: 3
+batch_size: 16
+grad_accum: 1
+class_weight: sqrt
+freeze_embeddings: true
+folds: [0]
+soft_targets: artifacts/teacher/teacher_oof.npy
+distill_alpha: 0.5

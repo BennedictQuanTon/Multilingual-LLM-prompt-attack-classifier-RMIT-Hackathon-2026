@@ -32,11 +32,15 @@ from .submission import label_distribution, make_submission, validate_submission
 
 def subsample(data: CompetitionData, limit: int, seed: int) -> CompetitionData:
     """Stratified subset for smoke tests (`--limit 300`)."""
-    train = data.train.groupby("label", group_keys=False).apply(
-        lambda g: g.sample(min(len(g), max(limit * len(g) // len(data.train), 10)), random_state=seed)
-    )
+    # pandas 3 drops the grouping column inside groupby().apply, so pick indices per class instead
+    idx = [
+        i
+        for _, g in data.train.groupby("label")
+        for i in g.sample(min(len(g), max(limit * len(g) // len(data.train), 10)), random_state=seed).index
+    ]
     return CompetitionData(
-        train=train.reset_index(drop=True), test=data.test.head(limit).reset_index(drop=True)
+        train=data.train.loc[sorted(idx)].reset_index(drop=True),
+        test=data.test.head(limit).reset_index(drop=True),
     )
 
 
@@ -199,8 +203,14 @@ def run_experiment(
             print(f"⏭️ stopping before fold {k}: time budget {cfg.time_budget_hours}h would be exceeded")
             break
         tr, va = (folds != k) & (folds >= 0), folds == k
+        if cfg.full_fit:
+            tr = folds >= 0
+        y_tr = y[tr]
+        if cfg.soft_targets:  # (n_rows, n_classes) float targets instead of class ids
+            teacher = np.load(cfg.soft_targets)[: len(train)]
+            y_tr = cfg.distill_alpha * np.eye(len(LABELS))[y[tr]] + (1 - cfg.distill_alpha) * teacher[tr]
         val_p, pred_p, info = train_fold(
-            cfg, train[tr], y[tr], train[va], y[va], predict_df, seed=cfg.seed + k
+            cfg, train[tr], y_tr, train[va], y[va], predict_df, seed=cfg.seed + k
         )
         oof[va] = val_p
         pred_sum += pred_p
@@ -222,7 +232,8 @@ def run_experiment(
         pred_mean = (pred_sum / len(done)).astype(np.float32)
         hold_p, test_mean = pred_mean[:n_hold], pred_mean[n_hold:]
         scores = score_oof(oof, y, folds, language)
-        bias = np.asarray(scores["bias"])
+        # argmax: OOF-tuned offsets lose to it out-of-fold (see ensemble.py), and are meaningless with full_fit
+        bias = np.zeros(len(LABELS))
         holdout = score_holdout(hold_p, y[hold], language[hold], bias) if n_hold else None
         sub = make_submission(test["id"], predict_with_bias(test_mean, bias))
         problems = validate_submission(sub, test["id"], expected_rows=len(test))

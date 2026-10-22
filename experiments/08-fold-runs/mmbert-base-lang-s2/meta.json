@@ -1,0 +1,170 @@
+{
+  "name": "mmbert-base-lang-s2",
+  "model": "mmbert-base",
+  "hf_id": "jhu-clsp/mmBERT-base",
+  "config": {
+    "name": "mmbert-base-lang-s2",
+    "model": "mmbert-base",
+    "seed": 7,
+    "split_seed": 42,
+    "n_folds": 5,
+    "folds": [
+      3,
+      4
+    ],
+    "holdout": 0.0,
+    "max_len": 512,
+    "head_len": 384,
+    "prepend_language": true,
+    "lr": 3e-05,
+    "epochs": 3,
+    "batch_size": 16,
+    "grad_accum": 1,
+    "warmup_ratio": 0.1,
+    "weight_decay": 0.01,
+    "class_weight": "sqrt",
+    "label_smoothing": 0.0,
+    "grad_ckpt": false,
+    "n_gpu": null,
+    "freeze_embeddings": true,
+    "fp16": true,
+    "lora": {
+      "r": 16,
+      "alpha": 32,
+      "dropout": 0.05
+    },
+    "tfidf": {
+      "C": 8.0
+    },
+    "time_budget_hours": 11.0,
+    "evals_per_epoch": 4,
+    "train_probe": 512,
+    "notes": ""
+  },
+  "split_fp": "10a79e50dde8",
+  "n_train": 14000,
+  "n_holdout": 0,
+  "n_test": 6000,
+  "folds_done": [
+    3,
+    4
+  ],
+  "n_test_models": 2,
+  "fold_stats": [
+    {
+      "fold": 3,
+      "n_train": 11200,
+      "n_val": 2800,
+      "macro_f1": 0.9677047662496188,
+      "minutes": 12.834304372469584,
+      "model_path": "/kaggle/input/models/aisuko/mmbert-base/transformers/default/1",
+      "mean_tokens": 110.99875,
+      "truncated": 0.019910714285714285,
+      "steps": 2100,
+      "devices": 1,
+      "peak_vram_gb": 7.619743232
+    },
+    {
+      "fold": 4,
+      "n_train": 11200,
+      "n_val": 2800,
+      "macro_f1": 0.9715635020208198,
+      "minutes": 12.705803883075713,
+      "model_path": "/kaggle/input/models/aisuko/mmbert-base/transformers/default/1",
+      "mean_tokens": 111.098125,
+      "truncated": 0.019732142857142858,
+      "steps": 2100,
+      "devices": 1,
+      "peak_vram_gb": 7.619743232
+    }
+  ],
+  "scores": {
+    "coverage": 0.4,
+    "macro_f1_argmax": 0.9696345353709014,
+    "macro_f1_tuned": 0.9704258256472572,
+    "bias": [
+      0.0,
+      -1.0,
+      0.0
+    ],
+    "public_lb_ci95": [
+      0.9605229061812118,
+      0.9797524433271506
+    ],
+    "per_class": {
+      "precision": {
+        "BENIGN": 0.9744,
+        "JAILBREAK": 0.97706,
+        "PROMPT_INJECTION": 0.97396
+      },
+      "recall": {
+        "BENIGN": 0.98675,
+        "JAILBREAK": 0.9568,
+        "PROMPT_INJECTION": 0.95408
+      },
+      "f1": {
+        "BENIGN": 0.98054,
+        "JAILBREAK": 0.96682,
+        "PROMPT_INJECTION": 0.96392
+      },
+      "support": {
+        "BENIGN": 3472,
+        "JAILBREAK": 1736,
+        "PROMPT_INJECTION": 392
+      }
+    },
+    "per_language": {
+      "n": {
+        "en": 559,
+        "fr": 1400,
+        "it": 1121,
+        "pt": 2520
+      },
+      "macro_f1": {
+        "en": 0.95771,
+        "fr": 0.97793,
+        "it": 0.9713,
+        "pt": 0.96792
+      },
+      "f1_BENIGN": {
+        "en": 0.99283,
+        "fr": 0.99252,
+        "it": 0.98636,
+        "pt": 0.96868
+      },
+      "f1_JAILBREAK": {
+        "en": 0.9914,
+        "fr": 0.9977,
+        "it": 0.98559,
+        "pt": 0.93508
+      },
+      "f1_PROMPT_INJECTION": {
+        "en": 0.88889,
+        "fr": 0.94359,
+        "it": 0.94194,
+        "pt": 1.0
+      }
+    },
+    "confusion": {
+      "pred_BENIGN": {
+        "true_BENIGN": 3426,
+        "true_JAILBREAK": 74,
+        "true_PROMPT_INJECTION": 16
+      },
+      "pred_JAILBREAK": {
+        "true_BENIGN": 37,
+        "true_JAILBREAK": 1661,
+        "true_PROMPT_INJECTION": 2
+      },
+      "pred_PROMPT_INJECTION": {
+        "true_BENIGN": 9,
+        "true_JAILBREAK": 1,
+        "true_PROMPT_INJECTION": 374
+      }
+    },
+    "macro_f1_tuned_crossfit": 0.9698073985894785
+  },
+  "holdout": null,
+  "elapsed_minutes": 25.94,
+  "updated_at": "2026-10-22T05:38:39+00:00"
+}

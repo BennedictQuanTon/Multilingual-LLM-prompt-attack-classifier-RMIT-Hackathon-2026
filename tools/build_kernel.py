@@ -13,6 +13,7 @@ Then: kaggle kernels push -p kaggle/build/<slug>
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
 import re
@@ -70,6 +71,20 @@ def code(text: str) -> dict:
         "outputs": [],
         "source": [x + "\n" for x in lines[:-1]] + lines[-1:],
     }
+
+
+def attach_cells(paths: list[str] | None) -> list[dict]:
+    """Small local files (e.g. distillation teacher probabilities) embedded as base64, written to the same path."""
+    cells = []
+    for path in paths or []:
+        data = base64.b64encode((ROOT / path).read_bytes()).decode()
+        cells.append(
+            code(
+                f"import base64, os\nos.makedirs({os.path.dirname(path)!r} or '.', exist_ok=True)\n"
+                f"open({path!r}, 'wb').write(base64.b64decode({data!r}))"
+            )
+        )
+    return cells
 
 
 def package_cells() -> list[dict]:
@@ -207,7 +222,11 @@ def build(args) -> Path:
                 "from rmitguard.config import load_config_text\n"
                 "cfg = load_config_text(CONFIG_YAML, folds=FOLDS, holdout=HOLDOUT)\ncfg"
             ),
-            md("## Train with K-fold CV\nArtifacts are saved after every fold under `artifacts/<name>/`."),
+            md(
+                "## Train one model on 100% of train.csv\nFold-0 rows are scored in-sample (monitoring only)."
+                if cfg.full_fit
+                else "## Train with K-fold CV\nArtifacts are saved after every fold under `artifacts/<name>/`."
+            ),
             code(
                 "from rmitguard.runner import run_experiment\nrun_dir = run_experiment(cfg, out_dir='artifacts')"
             ),
@@ -299,6 +318,7 @@ def build(args) -> Path:
         ),
         *setup,
         *package_cells(),
+        *attach_cells(args.attach),
         *run,
     ]
     nb = {
@@ -354,6 +374,9 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--final", action="store_true", help="use the official name RMIT_SGS_GenData_C1")
     parser.add_argument("--username", default=None)
     parser.add_argument("--tag", default=None, help="bench: name suffix of the notebook")
+    parser.add_argument(
+        "--attach", nargs="*", default=None, help="small local files to embed (e.g. teacher .npy)"
+    )
     args = parser.parse_args(argv)
     if args.mode == "train" and len(args.config) != 1:
         parser.error("train mode needs exactly one config path (use bench for several)")

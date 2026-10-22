@@ -5,6 +5,70 @@
 
 ---
 
+## ⛔ 13:15 (22/10) — BTC: KHÔNG được ensemble. Bản chính thức = 1 model duy nhất
+
+> Host (Cyrus Gao): *"ensemble methods combining multiple models are not allowed in Challenge 1 … each team must
+> select and fine-tune only one model from the approved model list for their final solution."*
+
+- Các bản 02/04/05/06 là ensemble → **chỉ để xem điểm public, KHÔNG chọn làm final**. Phải **chọn tay** bài final
+  trên Kaggle (Submissions → Select), nếu không Kaggle tự lấy bản public cao nhất (= ensemble).
+- xling (tra nhãn câu dịch bằng mmBERT gốc) cũng là bước ngoài model → **bỏ khỏi bản chính thức** trừ khi BTC cho phép.
+- Đã huỷ `g2` (Granite fold 3–4) để lấy slot; `g1` giữ lại cho ensemble tham khảo.
+- **`s7-single`** (pushed 13:23, 2 T4): `mmbert-base-distill` (fold 0, kiểm tra distill) · `mmbert-base-full`
+  (model đơn sạch, 100% train) · `mmbert-base-distill-full` (distill, 100% train). Xong ~14:10.
+- Distillation = train 1 mmbert-base với nhãn mềm `0,5·one-hot + 0,5·teacher` (teacher = OOF của 7 mmbert + TF-IDF,
+  `artifacts/teacher/teacher_oof.npy`). Ra đúng 1 model nhưng teacher là ensemble → **vùng xám, hỏi BTC trước khi nộp**.
+- Code mới: `full_fit`, `soft_targets`, `distill_alpha` (config); `--attach` (build_kernel nhúng file .npy);
+  sửa lỗi `--limit` với pandas 3.
+
+**Chiến lược 13:35 (lead chốt):** ensemble chỉ để leo public; bản cuối = 1 model, lead tự chọn bài final.
+
+| lượt | nội dung | khi nào |
+|---|---|---|
+| 1 | **ensemble mạnh nhất**: 7 mmbert ×5 fold + TF-IDF 0,1 + Granite (fold 0–2, chỉ pt) + xling 0,85 | ~14:35 (sau `g1`) |
+| 2 | dành cho bạn trong team | tuỳ |
+| 3 | **thử model đơn** từ `s7` (100% train, plain hoặc distill) | ~14:15 |
+| 4 | **model đơn cuối**: output của notebook `RMIT_SGS_GenData_C1` (train 1 model trên 100% train) | ~15:00 |
+
+- Cách lấy trung bình không quan trọng (14k OOF): cộng 0,9724 · nhân 0,9721 · bỏ phiếu 0,9723 → giữ trung bình cộng.
+- Runner giờ xuất `submission.csv` bằng argmax (offset fit trên dữ liệu đã train là vô nghĩa với `full_fit`).
+
+**13:55 — s7 xong (model đơn).** Distill **có tác dụng**: fold 0 **0,9663** vs mmbert-base thường 0,9622 (+0,004; pt 0,955 → 0,958).
+Teacher OOF ở fold 1–4 đến từ model đã thấy fold 0, nên con số distill hơi lạc quan.
+- `submissions/08_single_mmbert-base_full100.csv`: 1 model, 100% train, không teacher → **hợp lệ chắc chắn**.
+- `submissions/09_single_mmbert-base_distill_full100.csv`: 1 model distill, 100% train → vùng xám.
+- Bỏ phiếu giữa các bản dịch trong test (dùng dự đoán, 14k OOF): 0,9734 → 0,9736 = nhiễu → **bỏ**.
+- 13:56: push lại `g2` (Granite fold 3–4) cho ensemble cuối → xong ~15:25.
+
+**14:28 — Granite fold 1–2 về.** Fold 1 bình thường (F1 0,9416, pt 0,952). **Fold 2 hỏng**: F1 0,368, 354 dòng
+xác suất NaN (nghi tràn fp16 lúc suy luận) → **loại**; mọi fold LLM phải được kiểm tra trước khi ghép.
+- Chọn trọng số pt trên 5.600 dòng có Granite OOF (fold 0–1): 0 → 0,9707 · 0,33 → 0,9732 · **0,4 → 0,9745** · 0,5 → 0,9743.
+- **`submissions/10_ens7x5_tfidf_granite2PT_xling.csv`**: Granite 2 fold (test = trung bình 2 model), pt 0,4. Khác 06 ở 49 nhãn (đều pt).
+- Đã nộp model đơn distill: **public 0,96514** (fold 0 0,9663). `submission_v5` (Di Luan): 0,97111.
+
+**14:35 — bản 10 public 0,97530** (+0,0028 so với 04; CV ~0,975 → CV giờ khớp LB). Top 10 cần ~0,9777.
+Đã thử thêm, đánh giá trung thực, **không cái nào hơn trọng số đặt tay** (Granite 0,4 chỉ ở pt):
+
+| thử | kết quả (rows có Granite, +xling) |
+|---|---|
+| Granite thêm vào ngôn ngữ khác pt (0,05–0,2) | 0,9742–0,9745 (=) |
+| chỉ đẩy lớp PI (offset cross-fit) | 0,9741 (< 0,9749 argmax) |
+| stacking LR (toàn bộ / theo ngôn ngữ) | 0,9737 / 0,9715 |
+| stacking LR chỉ cho pt | ≤ 0,9746 (=) |
+| **trọng số tay (đang dùng)** | **0,9745** |
+
+⇒ Cách kết hợp đã gần tối ưu; chỉ còn tăng được nhờ **thêm model Granite** (trung bình nhiều seed ở pt):
+- `g3` Granite fold 2 chạy lại (seed 7) → ~16:00 · `g2` fold 3–4 → ~15:25
+- `b6` Granite **seed 2** fold 3–4: tự push khi `g2` trả slot (~15:25) → ~16:55
+- `kaggle/ready/B5_granite-seed2.ipynb`: Granite seed 2 fold 0–1 cho **Di Luan** chạy (~95 phút)
+- Script ghép tự gộp mọi seed Granite và loại fold hỏng.
+
+| bản model đơn | file | fold 0 | public dự kiến |
+|---|---|---|---|
+| mmbert-base, 1 fold (80% train), argmax | `submissions/07_single_mmbert-base_fold0_argmax.csv` | 0,9622 | ~0,963–0,966 |
+| mmbert-base, 100% train | ~14:10 | — (không có CV) | ~0,965–0,968 |
+| distill, 100% train | ~14:10 (nếu BTC cho phép) | xem `mmbert-base-distill` | ~0,967–0,972 (chưa chắc) |
+
 ## ★★ CẬP NHẬT 10:40 (22/10) — phát hiện mới + lịch nộp còn lại
 
 **Phiên Kaggle**
@@ -12,6 +76,8 @@
 - `s5-v1-variants` (pushed 10:27, timeout 9000 s): **mmbert-base fold 1–4** (bù phần s1) + lang/cw0/ls fold 1–4 + xling → dự kiến xong **~12:20**.
 - `s3` (Mistral fold 0 + seed 3): **bỏ Mistral** (quyết định 10:37) → đã xoá notebook; mất luôn seed 3.
 - `b3-granite-s4` (pushed 10:37 trên tài khoản lead, timeout 10800 s): **Granite-2B fold 0** (GPU 0, tối đa 170 phút) + mmbert-base seed 4 ×5 fold (GPU 1, ~65 phút, thay seed 3). seed 4 xong ~11:45; Granite xong muộn nhất **~13:30**.
+- ⚠️ Kaggle chỉ cấp **1 T4** cho `b3` → Granite chạy trước, seed 4 chạy sau và nhiều khả năng không kịp (không tính vào kế hoạch).
+- **Chạy solo** (2 bạn chưa chạy notebook): `s6-lang-s2` (mmbert-base-lang seed 7, 5 fold, ~40 phút) **tự push khi s5 trả slot (~12:20)** → xong ~13:05.
 - Runner bench giờ **tự kill job nào chạy quá 170 phút** (`JOB_LIMIT_MIN`) → không còn phiên treo vô hạn.
 - Log trực tiếp đọc được qua API stream (`kernels_logs_stream`) dù CLI `kernels logs` trả rỗng.
 
@@ -44,6 +110,51 @@
 
 **Ứng viên ensemble (fold 0, argmax + xling)** — chênh nhau trong nhiễu ±0,002, chọn bản đơn giản nhất:
 5 mmbert-base **0,9708** · +mmbert-small 0,9701 · +small+wolf 0,9710 · +small+tfidf 0,9719 · greedy cũ 0,9687 · +ep2 0,9690.
+
+**Kết quả thử 1 (10:45):** `04_ens5_xling_argmax` → **public 0,97254** (02: 0,96915 → **+0,0034**), hạng 8. Fold 0 dự báo +0,0029 ⇒ **CV tiếp tục khớp LB**.
+Top LB lúc 10:45: 0,98359 · 0,98216 · 0,97762 · 0,97554 · 0,97554 · 0,97471 · 0,97280 · **0,97254 (mình)**. Còn **4 lượt**: 1 thử + 3 chính thức.
+
+**Tối ưu cho lượt thử cuối (11:00) — đo trên OOF đủ 5 fold (14.000 dòng), không chỉ fold 0**
+- **xling: đổi ngưỡng 0,78 → 0,85.** Ở 0,78: sửa 10, làm sai 10 (hoà vốn); ở 0,85: sửa 5, sai 0 → +0,001. Ngưỡng 0,78 được chọn trên fold 0 (2.800 dòng) nên bị overfit.
+- **TF-IDF vào ensemble (team đồng ý):** `mmbert-base-s2` 0,9649 → +TF-IDF trọng số 0,5: **0,9673** (pt 0,9523 → 0,9554). Trọng số chọn lại khi có đủ thành viên (đỉnh nhọn: 0,6 tụt về 0,9637).
+- `tools/select_final.py`: chấm mọi thành viên trên 14k OOF, leave-one-out, trọng số TF-IDF, ngưỡng xling, và Granite (fold 0) ở các trọng số → chọn bản cuối.
+- s5: mmbert-base fold 1–4 **xong sau 25 phút** (10:52); còn lang/cw0/ls (~25 phút mỗi cặp) → s5 xong **~12:35**.
+
+**12:15 — s5 xong, OOF đủ 5 fold (14.000 dòng, argmax)**
+
+| thành viên (5 fold) | OOF | pt |
+|---|---|---|
+| mmbert-base-cw0 | 0,9667 | 0,9558 |
+| mmbert-base | 0,9661 | 0,9571 |
+| mmbert-base-s2 | 0,9649 | 0,9523 |
+| mmbert-base-lang | 0,9643 | 0,9578 |
+| mmbert-base-ls | 0,9594 | 0,9489 |
+| TF-IDF | 0,9304 | 0,9138 |
+| **ensemble 5 mmbert** | **0,9718** | 0,9619 |
+| + TF-IDF (trọng số 0,2) + xling 0,85 | **0,9729** | |
+
+- Khi ensemble đã mạnh, TF-IDF chỉ còn +0,0002 (0,6 tụt về 0,9636). xling thêm +0,001.
+- Bỏ một model bất kỳ đều giảm hoặc giữ nguyên điểm (bỏ ls: 0,9717), nên giữ cả 5.
+- Encoder khác (wolf, deberta, xlmr, distilbert, small) chỉ có fold 0 và **đều làm giảm** ensemble → loại.
+- **Bản tạm `submissions/05_ens5x5fold_tfidf_xling.csv`**: OOF 0,9729, fold 0 0,9718 (bản 04: 0,9708). Khác bản 04 ở 61 nhãn. Hợp lệ.
+- Đang chờ: s6 (lang seed 2, ~13:00) và b3 (Granite xong lúc 12:03 sau 85 phút; seed 4 đang chạy; output ~13:10).
+
+**13:10 — Granite fold 0 có kết quả: mạnh ở pt, yếu ở chỗ khác → trọng số theo ngôn ngữ**
+
+| fold 0 macro F1 | pt | fr | it | en |
+|---|---|---|---|---|
+| Granite-2B (1 model) | **0,965** | 0,956 | 0,937 | 0,927 |
+| ensemble 7 mmbert + TF-IDF | 0,958 | 0,975 | 0,989 | 0,967 |
+
+| cách ghép (fold 0, + xling 0,85) | macro F1 |
+|---|---|
+| 7 mmbert ×5 fold + TF-IDF 0,1 | 0,9716 |
+| + Granite 0,33 mọi ngôn ngữ | 0,9739 |
+| **+ Granite 0,5 chỉ cho pt** (0,33–0,67 đều ≥ 0,9742) | **0,9759** |
+
+- `ensemble()` nhận trọng số theo ngôn ngữ: `{"granite-2b-lora": {"pt": w, "*": 0}}`.
+- **`submissions/06_ens7x5_tfidf_granitePT_xling.csv`** — fold 0 **0,9759**; khác 05 ở 89 nhãn (86 pt, 3 fr). Hợp lệ. → **lượt thử cuối**.
+- Granite fold 1–4 đang chạy (`g1` 12:52 → ~14:25, `g2` 13:04 → ~14:35, mỗi phiên 2 GPU) → bản chính thức có Granite đủ 5 fold, chọn trọng số trên OOF pt 6.300 dòng thay vì 1.260.
 
 **Lịch nộp (còn 5 lượt hôm nay: 2 thử + 3 bản chính thức)**
 

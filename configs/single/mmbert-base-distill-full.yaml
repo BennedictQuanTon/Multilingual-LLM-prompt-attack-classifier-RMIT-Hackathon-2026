@@ -1,0 +1,15 @@
+# Distilled single model on 100% of train (submit only if the organisers allow distillation)
+name: mmbert-base-distill-full
+model: mmbert-base
+max_len: 512
+head_len: 384
+lr: 3.0e-5
+epochs: 3
+batch_size: 16
+grad_accum: 1
+class_weight: sqrt
+freeze_embeddings: true
+folds: [0]
+full_fit: true
+soft_targets: artifacts/teacher/teacher_oof.npy
+distill_alpha: 0.5

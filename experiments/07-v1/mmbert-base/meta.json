@@ -1,0 +1,115 @@
+{
+  "name": "mmbert-base",
+  "model": "mmbert-base",
+  "members": {
+    "mmbert-base": {
+      "weight": 1.0,
+      "folds_done": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "model": "mmbert-base",
+      "sources": [
+        "/Users/davark/Downloads/Everything/Github/Team-GenData-RMIT-Hackathon-2026/outputs/rmit-sgs-gendata-bench-a-c1/artifacts/mmbert-base-f0/mmbert-base",
+        "/Users/davark/Downloads/Everything/Github/Team-GenData-RMIT-Hackathon-2026/outputs/rmit-sgs-gendata-s5-v1-variants-c1/artifacts/mmbert-base-f12/mmbert-base",
+        "/Users/davark/Downloads/Everything/Github/Team-GenData-RMIT-Hackathon-2026/outputs/rmit-sgs-gendata-s5-v1-variants-c1/artifacts/mmbert-base-f34/mmbert-base"
+      ]
+    }
+  },
+  "split_fp": "10a79e50dde8",
+  "n_train": 14000,
+  "n_test": 6000,
+  "scores": {
+    "coverage": 1.0,
+    "macro_f1_argmax": 0.9661274592984671,
+    "macro_f1_tuned": 0.9666689774939958,
+    "bias": [
+      0.0,
+      -0.65,
+      0.0
+    ],
+    "public_lb_ci95": [
+      0.9556034685457518,
+      0.9761376897759486
+    ],
+    "per_class": {
+      "precision": {
+        "BENIGN": 0.97369,
+        "JAILBREAK": 0.96447,
+        "PROMPT_INJECTION": 0.97587
+      },
+      "recall": {
+        "BENIGN": 0.98053,
+        "JAILBREAK": 0.95691,
+        "PROMPT_INJECTION": 0.94898
+      },
+      "f1": {
+        "BENIGN": 0.9771,
+        "JAILBREAK": 0.96068,
+        "PROMPT_INJECTION": 0.96223
+      },
+      "support": {
+        "BENIGN": 8680,
+        "JAILBREAK": 4340,
+        "PROMPT_INJECTION": 980
+      }
+    },
+    "per_language": {
+      "n": {
+        "en": 1400,
+        "fr": 3500,
+        "it": 2800,
+        "pt": 6300
+      },
+      "macro_f1": {
+        "en": 0.95468,
+        "fr": 0.97723,
+        "it": 0.97841,
+        "pt": 0.95789
+      },
+      "f1_BENIGN": {
+        "en": 0.98909,
+        "fr": 0.99103,
+        "it": 0.99052,
+        "pt": 0.96076
+      },
+      "f1_JAILBREAK": {
+        "en": 0.99196,
+        "fr": 0.99263,
+        "it": 0.99134,
+        "pt": 0.922
+      },
+      "f1_PROMPT_INJECTION": {
+        "en": 0.88298,
+        "fr": 0.94802,
+        "it": 0.95337,
+        "pt": 0.99089
+      }
+    },
+    "confusion": {
+      "pred_BENIGN": {
+        "true_BENIGN": 8511,
+        "true_JAILBREAK": 186,
+        "true_PROMPT_INJECTION": 44
+      },
+      "pred_JAILBREAK": {
+        "true_BENIGN": 147,
+        "true_JAILBREAK": 4153,
+        "true_PROMPT_INJECTION": 6
+      },
+      "pred_PROMPT_INJECTION": {
+        "true_BENIGN": 22,
+        "true_JAILBREAK": 1,
+        "true_PROMPT_INJECTION": 930
+      }
+    },
+    "macro_f1_tuned_crossfit": 0.9666102085987376
+  },
+  "holdout": null,
+  "xling": null,
+  "decision": "argmax",
+  "updated_at": "2026-10-22T07:28:12+00:00"
+}
