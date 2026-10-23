@@ -40,6 +40,45 @@ SUBMISSIONS = [
     ("13", "+ 6 models on 100% train, Granite seed 2", 0.97824, "ensemble"),
 ]
 TOP10_CUTOFF = 0.97769  # 10th place at 14:34, 22/10
+# private leaderboard (70% of test) of the three submissions selected for final scoring
+PRIVATE = {"10": 0.98241, "12c": 0.98111, "distill": 0.97226}
+
+
+def public_vs_private() -> None:
+    names = [s for s in SUBMISSIONS if s[0] in PRIVATE]
+    fig, ax = plt.subplots(figsize=(8, 3.2))
+    yy = np.arange(len(names))[::-1]
+    for t, (sid, _desc, pub, kind) in zip(yy, names):
+        prv = PRIVATE[sid]
+        ax.hlines(t, pub, prv, color=C.GRID, lw=2, zorder=1)
+        ax.scatter(pub, t, s=60, color=C.MUTED, edgecolor=C.SURFACE, lw=2, zorder=3)
+        ax.scatter(
+            prv,
+            t,
+            s=60,
+            color=ENSEMBLE if kind == "ensemble" else SINGLE,
+            edgecolor=C.SURFACE,
+            lw=2,
+            zorder=3,
+        )
+        ax.text(pub, t - 0.32, f"{pub:.5f}", ha="center", fontsize=7.5, color=C.INK2)
+        ax.text(
+            prv,
+            t + 0.2,
+            f"{prv:.5f}",
+            ha="center",
+            fontsize=8,
+            color=C.INK,
+            fontweight="bold" if sid == "10" else "normal",
+        )
+    ax.set_yticks(yy, [f"{s[0]}: {s[1]}" for s in names], fontsize=8)
+    ax.set_ylim(-0.7, len(names) - 0.3)
+    ax.scatter([], [], s=50, color=C.MUTED, label="public (30%)")
+    ax.scatter([], [], s=50, color=ENSEMBLE, label="private (70%, final ranking)")
+    ax.legend(frameon=False, fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.22), ncol=2)
+    ax.set(title="Selected submissions: public vs private leaderboard", xlabel="macro F1")
+    ax.grid(axis="y", visible=False)
+    C._save(fig, OUT / "public_vs_private.png")
 
 
 def lb_progress() -> None:
@@ -214,6 +253,7 @@ def backbones() -> None:
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     lb_progress()
+    public_vs_private()
     backbones()
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)

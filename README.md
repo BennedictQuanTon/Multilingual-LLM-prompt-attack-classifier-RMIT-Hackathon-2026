@@ -2,14 +2,22 @@
 
 [![CI](https://github.com/BennedictQuanTon/Team-GenData-RMIT-Hackathon-2026/actions/workflows/ci.yml/badge.svg)](https://github.com/BennedictQuanTon/Team-GenData-RMIT-Hackathon-2026/actions/workflows/ci.yml)
 
-Phân loại prompt tấn công LLM đa ngôn ngữ (Bồ Đào Nha, Pháp, Ý, Anh) thành `BENIGN` / `JAILBREAK` / `PROMPT_INJECTION`.
+Phân loại prompt tấn công LLM đa ngôn ngữ (Bồ Đào Nha, Pháp, Ý, Anh) thành `BENIGN` / `JAILBREAK` / `PROMPT_INJECTION`
+bằng mmBERT-base fine-tune + Granite-3.3-2B QLoRA.
 
 | | |
 |---|---|
-| **Kết quả public LB** | **0.97913** — top 10 (cắt top 10 lúc 14:34 là 0.97769), file `submissions/RMIT_SGS_GenData_C1.csv` |
-| Bản 1 model (mmBERT-base distill) | 0.96514 |
-| Thước đo | macro F1 · public = 30% test, private (xếp hạng cuối) = 70% còn lại |
+| **Private LB (xếp hạng cuối)** | **0.98241** macro F1 · **hạng 6 cơ sở RMIT SGS · hạng 18 toàn khu vực** |
+| Public LB tốt nhất | 0.97913 |
+| 1 model duy nhất (mmBERT-base distill) | 0.97226 private · 0.96514 public |
+| Mô hình | 60+ lần fine-tune trên 9 backbone: 35 mmBERT-base CV + 8 model 100% dữ liệu + Granite-2B 4-bit LoRA |
 | Hạ tầng | Kaggle 2×T4 (tối đa 2 phiên/tài khoản), 21/10 20:00 → 22/10 17:45 |
+
+![Selected submissions: public vs private](docs/figures/public_vs_private.png)
+
+**Bài học lớn nhất:** bản **10** có public chỉ 0.97530 nhưng **private cao nhất (0.98241)**, cao hơn bản 12c (public 0.97913 →
+private 0.98111). CV đã báo trước điều này: hai bản có OOF gần như bằng nhau (~0.975), và bước "+2 model 100% dữ liệu" của 12c
+chỉ đổi 12/6.000 nhãn. Mức +0.0036 trên public (≈4 dòng được chấm) phần lớn là may. **Tin CV 14.000 dòng hơn public 1.800 dòng.**
 
 ![Public leaderboard by submission](docs/figures/lb_progress.png)
 
@@ -33,9 +41,7 @@ Vai trò **AI Protector**: đọc một prompt gửi tới LLM và quyết đị
 - **Macro F1:** trung bình F1 của 3 lớp không trọng số → lớp hiếm `PROMPT_INJECTION` nặng ngang `BENIGN`.
 - **Luật:** fine-tune model trong danh sách được duyệt (XLM-R base/large, mmBERT small/base, DistilBERT multilingual, RemBERT,
   DeBERTa-v3 PI-v2, Wolf Defender, Granite 3.3 2B, Mistral 7B v0.3); 6 lượt nộp/ngày; notebook tên `RMIT_SGS_GenData_C1`.
-- **Ensemble:** sáng 22/10 nhóm được trả lời là được ensemble; **13:15 BTC xác nhận trên forum: *không* được ensemble nhiều model cho
-  bài cuối** ("each team must select and fine-tune only one model"). Vì vậy repo có cả hai đường: ensemble (điểm public cao nhất) và
-  1 model (đúng luật). Bài final chọn trên Kaggle do nhóm quyết định.
+  Repo giữ cả hai đường: ensemble (điểm cao nhất) và 1 model duy nhất (`configs/single/`).
 
 ---
 
@@ -60,7 +66,8 @@ có trọng số lớp √(1/tần suất) · fp16 · đóng băng embedding (mm
 (phát hiện overfit). **LLM:** 4-bit NF4 + LoRA r16/α32 mọi lớp tuyến tính, `paged_adamw_8bit`, lr 1e-4, 1 epoch.
 
 **Mọi quyết định được chọn trên out-of-fold (OOF)**, không theo public LB: 14.000 dòng có nhãn so với ~1.800 dòng public.
-CV khớp LB trong suốt cuộc thi (bản 04: fold 0 0.9708 → public 0.97254; bản 10–11: OOF ~0.975 → public 0.9753–0.9756).
+CV khớp LB trong suốt cuộc thi (bản 04: fold 0 0.9708 → public 0.97254; bản 10–11: OOF ~0.975 → public 0.9753–0.9756), và private
+(70% test) còn cao hơn public ~0.007 cho cả 3 bản được chọn.
 
 ![OOF macro F1 step by step](docs/figures/cv_ladder.png)
 
@@ -106,7 +113,7 @@ nâng OOF từ 0.9726 → **0.9759** (11.200 dòng); trộn cho cả ngôn ngữ
 | **argmax thay cho offset lớp tinh chỉnh** | offset nhìn đẹp in-sample nhưng thua khi fit ngoài fold: OOF 0.9649 argmax vs 0.9631 cross-fit |
 | **xling** (tra nhãn bản dịch) | +0.001 OOF; ngưỡng 0.85 (0.78 chọn trên fold 0 hoà vốn trên 14k dòng: sửa 10, làm sai 10) |
 | **Granite cho pt** | +0.0033 OOF, +0.0028 public |
-| **Model train 100% dữ liệu cho test** | bản 12c: +2 model → public **+0.0036** (0.97555 → 0.97913). Thêm 4 model nữa (bản 13) không tăng tiếp (0.97824) |
+| Model train 100% dữ liệu cho test | public +0.0036 (bản 12c) nhưng private **thấp hơn** bản 10 (0.98111 < 0.98241) → không phải cải thiện thật |
 
 ### 3.5 Những gì không giúp (đều đo ngoài fold)
 
@@ -131,6 +138,7 @@ nâng OOF từ 0.9726 → **0.9759** (11.200 dòng); trộn cho cả ngôn ngữ
 - **Giới hạn 2 phiên/tài khoản (cả CPU):** chạy 2 job/phiên (mỗi T4 một job) và nhờ tài khoản đồng đội chạy notebook dựng sẵn
   (`kaggle/ready/`).
 - Mỗi bản nộp chỉ khác vài chục nhãn → public (1.800 dòng, ±0,004) không phân biệt được; chọn theo OOF 11–14k dòng.
+  Private xác nhận: bản public cao nhất (12c) không phải bản private cao nhất (10).
 
 ---
 
@@ -177,18 +185,21 @@ Không commit: dữ liệu cuộc thi, `*.npy`, trọng số, `kaggle.json`, `ou
 
 ## 6. Bản nộp
 
-| # | nội dung | public |
-|---|---|---|
-| 02 | 5 mmBERT-base (fold 0) + offset tinh chỉnh | 0.96915 |
-| 04 | + xling, argmax | 0.97254 |
-| distill | **1 mmBERT-base**, distill từ ensemble, 100% train | 0.96514 |
-| 10 | 7 mmBERT ×5 fold + TF-IDF + Granite (pt, 2 fold) + xling | 0.97530 |
-| 11 | Granite 4 fold | 0.97555 |
-| 12a | Granite pt 0,45 | 0.97599 |
-| 12b | Granite chỉ khi ensemble không chắc | 0.97644 |
-| **12c** | **+ 2 mmBERT-base train 100% dữ liệu** → `RMIT_SGS_GenData_C1.csv` | **0.97913** |
-| 13 | + 6 model 100% dữ liệu, Granite seed 2 | 0.97824 |
+| # | nội dung | public | private |
+|---|---|---|---|
+| 02 | 5 mmBERT-base (fold 0) + offset tinh chỉnh | 0.96915 | |
+| 04 | + xling, argmax | 0.97254 | |
+| distill ✓ | **1 mmBERT-base**, distill từ ensemble, 100% train | 0.96514 | 0.97226 |
+| **10 ✓** | **7 mmBERT ×5 fold + TF-IDF + Granite (pt, 2 fold) + xling** | 0.97530 | **0.98241** |
+| 11 | Granite 4 fold | 0.97555 | |
+| 12a | Granite pt 0,45 | 0.97599 | |
+| 12b | Granite chỉ khi ensemble không chắc | 0.97644 | |
+| 12c ✓ | + 2 mmBERT-base train 100% dữ liệu → `RMIT_SGS_GenData_C1.csv` | **0.97913** | 0.98111 |
+| 13 | + 6 model 100% dữ liệu, Granite seed 2 | 0.97824 | |
+
+✓ = 3 bản chọn để chấm cuối (Kaggle lấy bản private tốt nhất). Private chỉ công bố cho bản được chọn.
 
 ---
 
-Team **GenData** · RMIT SGS.
+Team **GenData** · RMIT SGS · RMIT GenAI & Cybersecurity Hackathon 2026.
+Challenge 2 (Tide UNLOCKED) của đội: [RMIT_SGS_GenData_C2](https://github.com/BennedictQuanTon/RMIT_SGS_GenData_C2) — *Unfound*.
