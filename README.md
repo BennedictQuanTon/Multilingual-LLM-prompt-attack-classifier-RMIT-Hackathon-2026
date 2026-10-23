@@ -2,204 +2,209 @@
 
 [![CI](https://github.com/BennedictQuanTon/Team-GenData-RMIT-Hackathon-2026/actions/workflows/ci.yml/badge.svg)](https://github.com/BennedictQuanTon/Team-GenData-RMIT-Hackathon-2026/actions/workflows/ci.yml)
 
-Phân loại prompt tấn công LLM đa ngôn ngữ (Bồ Đào Nha, Pháp, Ý, Anh) thành `BENIGN` / `JAILBREAK` / `PROMPT_INJECTION`
-bằng mmBERT-base fine-tune + Granite-3.3-2B QLoRA.
+Classifying multilingual LLM prompts (Portuguese, French, Italian, English) as `BENIGN` / `JAILBREAK` / `PROMPT_INJECTION`
+with fine-tuned mmBERT-base and a QLoRA-tuned Granite-3.3-2B.
 
 | | |
 |---|---|
-| **Private LB (xếp hạng cuối)** | **0.98241** macro F1 · **hạng 6 cơ sở RMIT SGS · hạng 18 toàn khu vực** |
-| Public LB tốt nhất | 0.97913 |
-| 1 model duy nhất (mmBERT-base distill) | 0.97226 private · 0.96514 public |
-| Mô hình | 60+ lần fine-tune trên 9 backbone: 35 mmBERT-base CV + 8 model 100% dữ liệu + Granite-2B 4-bit LoRA |
-| Hạ tầng | Kaggle 2×T4 (tối đa 2 phiên/tài khoản), 21/10 20:00 → 22/10 17:45 |
+| **Private LB (final ranking)** | **0.98241** macro F1 · **6th at RMIT Saigon South · 18th region-wide** |
+| Best public LB | 0.97913 |
+| Single model (distilled mmBERT-base) | 0.97226 private · 0.96514 public |
+| Models | 60+ fine-tuning runs on 9 backbones: 35 mmBERT-base CV models, 8 full-data models, Granite-2B 4-bit LoRA |
+| Compute | Kaggle 2× T4 (max 2 sessions per account), 21 Oct 20:00 → 22 Oct 17:45 (UTC+7) |
 
 ![Selected submissions: public vs private](docs/figures/public_vs_private.png)
 
-**Bài học lớn nhất:** bản **10** có public chỉ 0.97530 nhưng **private cao nhất (0.98241)**, cao hơn bản 12c (public 0.97913 →
-private 0.98111). CV đã báo trước điều này: hai bản có OOF gần như bằng nhau (~0.975), và bước "+2 model 100% dữ liệu" của 12c
-chỉ đổi 12/6.000 nhãn. Mức +0.0036 trên public (≈4 dòng được chấm) phần lớn là may. **Tin CV 14.000 dòng hơn public 1.800 dòng.**
+**Main lesson:** submission **10** scored only 0.97530 on the public board but had the **best private score (0.98241)**, above
+submission 12c (public 0.97913 → private 0.98111). Cross-validation predicted this: both had about the same out-of-fold score (~0.975),
+and 12c's extra step changed only 12 of 6,000 labels, so its +0.0036 on the public board (~4 scored rows) was mostly luck.
+**Trust 14,000 labelled rows of CV over 1,800 public rows.**
 
 ![Public leaderboard by submission](docs/figures/lb_progress.png)
 
 ---
 
-## 1. Cuộc thi
+## 1. The competition
 
-**RMIT GenAI & Cybersecurity Hackathon 2026** — *Security × Generative AI × Low-Resource Languages* (22–23/10/2026, Australia,
-Việt Nam, Malaysia). Challenge 1 chạy trên Kaggle: [rmit-hackathon-2026](https://www.kaggle.com/competitions/rmit-hackathon-2026).
+**RMIT GenAI & Cybersecurity Hackathon 2026** — *Security × Generative AI × Low-Resource Languages* (22–23 Oct 2026, Australia,
+Vietnam, Malaysia). Challenge 1 ran on Kaggle: [rmit-hackathon-2026](https://www.kaggle.com/competitions/rmit-hackathon-2026).
 
-Vai trò **AI Protector**: đọc một prompt gửi tới LLM và quyết định nó là
+Act as an **AI Protector**: read a prompt sent to an LLM and decide whether it is
 
-| nhãn | ý nghĩa | train |
+| label | meaning | share of train |
 |---|---|---|
-| `BENIGN` | yêu cầu bình thường | 62% |
-| `JAILBREAK` | thuyết phục model bỏ luật an toàn (nhập vai, "DAN", kịch bản giả tưởng…) | 31% |
-| `PROMPT_INJECTION` | chiếm quyền chỉ dẫn ("ignore previous instructions", lộ system prompt…) | 7% |
+| `BENIGN` | an ordinary request | 62% |
+| `JAILBREAK` | talks the model out of its safety rules (role-play, "DAN", fictional scenarios…) | 31% |
+| `PROMPT_INJECTION` | hijacks the model's instructions ("ignore previous instructions", system-prompt leaks…) | 7% |
 
-- **Dữ liệu:** `train.csv` 14.000 dòng, `test.csv` 6.000 dòng; `language` ∈ {pt 45%, fr 25%, it 20%, en 10%}, mỗi ngôn ngữ cùng tỉ lệ nhãn
-  62/31/7. Văn bản 10–18.550 ký tự. Giấy phép CC BY-NC-SA 4.0 (không commit dữ liệu).
-- **Macro F1:** trung bình F1 của 3 lớp không trọng số → lớp hiếm `PROMPT_INJECTION` nặng ngang `BENIGN`.
-- **Luật:** fine-tune model trong danh sách được duyệt (XLM-R base/large, mmBERT small/base, DistilBERT multilingual, RemBERT,
-  DeBERTa-v3 PI-v2, Wolf Defender, Granite 3.3 2B, Mistral 7B v0.3); 6 lượt nộp/ngày; notebook tên `RMIT_SGS_GenData_C1`.
-  Repo giữ cả hai đường: ensemble (điểm cao nhất) và 1 model duy nhất (`configs/single/`).
+- **Data:** `train.csv` 14,000 rows, `test.csv` 6,000 rows; `language` ∈ {pt 45%, fr 25%, it 20%, en 10%}, every language with the same
+  62/31/7 label split. Texts are 10–18,550 characters. Licence CC BY-NC-SA 4.0 (the data is not in this repo).
+- **Metric:** macro F1, the unweighted mean of the per-class F1, so the rare `PROMPT_INJECTION` class counts as much as `BENIGN`.
+  Public board = 30% of test, private board (final ranking) = the other 70%.
+- **Rules:** fine-tune models from the approved list (XLM-R base/large, mmBERT small/base, multilingual DistilBERT, RemBERT,
+  DeBERTa-v3 PI-v2, Wolf Defender, Granite 3.3 2B, Mistral 7B v0.3); 6 submissions per day; notebook named `RMIT_SGS_GenData_C1`.
+  The repo keeps both an ensemble path (best score) and a single-model path (`configs/single/`).
 
 ---
 
-## 2. Giải pháp
+## 2. Solution
 
 ```
-                    ┌─────────────────────────────── 5-fold CV (cùng split, nhóm theo văn bản trùng) ──────────────────────────┐
- train.csv ──►      │ 7 × mmBERT-base fine-tune (gốc, cw0, lang, ls, seed 7, seed 21, lang+seed 7)  → 35 model, OOF + test │
-                    │ TF-IDF + logistic regression (CPU)                                             →  5 model           │
-                    │ Granite-3.3-2B 4-bit + LoRA, fold 0/1/3/4 (fold 2 hỏng → loại)                 →  4 model           │
-                    └──────────────────────────────────────────────────────────────────────────────────────────────────────────┘
- + 2 × mmBERT-base train trên 100% train (chỉ dùng cho test)
+                  ┌──────────────────────── 5-fold CV (one split, duplicate texts grouped) ────────────────────────┐
+ train.csv ──►    │ 7 × mmBERT-base fine-tunes (base, cw0, lang, ls, seed 7, seed 21, lang+seed 7) → 35 models     │
+                  │ TF-IDF + logistic regression (CPU)                                             →  5 models     │
+                  │ Granite-3.3-2B, 4-bit + LoRA, folds 0/1/3/4 (fold 2 diverged → dropped)        →  4 models     │
+                  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+ + 2 × mmBERT-base trained on 100% of train (test predictions only)
 
- xác suất = 0.9 · mean(mmBERT) + 0.1 · TF-IDF
-          → câu tiếng Bồ Đào Nha: 0.6 · trên + 0.4 · Granite
-          → xling: câu có bản dịch trong train (cosine ≥ 0.85, mmBERT gốc) lấy nhãn của bản dịch
-          → argmax
+ probability = 0.9 · mean(mmBERT) + 0.1 · TF-IDF
+             → Portuguese rows: 0.6 · above + 0.4 · Granite
+             → xling: rows with a translation in train (cosine ≥ 0.85, pre-trained mmBERT) take that row's label
+             → argmax
 ```
 
-**Công thức train chung (encoder):** max_len 512 = 384 token đầu + 128 token cuối · AdamW, lr 3e-5, 3 epoch, warmup 10% · cross-entropy
-có trọng số lớp √(1/tần suất) · fp16 · đóng băng embedding (mmBERT/XLM-R: ~½ tham số) · 4 lần đánh giá/epoch trên fold + 512 dòng train
-(phát hiện overfit). **LLM:** 4-bit NF4 + LoRA r16/α32 mọi lớp tuyến tính, `paged_adamw_8bit`, lr 1e-4, 1 epoch.
+**Encoder recipe:** max_len 512 = first 384 + last 128 tokens · AdamW, lr 3e-5, 3 epochs, 10% warm-up · cross-entropy weighted by
+√(1/class frequency) · fp16 · frozen embeddings (~½ of mmBERT/XLM-R parameters) · 4 evaluations per epoch on the held-out fold and on
+512 training rows, to catch over-fitting. **LLM recipe:** 4-bit NF4 + LoRA r16/α32 on every linear layer, `paged_adamw_8bit`, lr 1e-4,
+1 epoch.
 
-**Mọi quyết định được chọn trên out-of-fold (OOF)**, không theo public LB: 14.000 dòng có nhãn so với ~1.800 dòng public.
-CV khớp LB trong suốt cuộc thi (bản 04: fold 0 0.9708 → public 0.97254; bản 10–11: OOF ~0.975 → public 0.9753–0.9756), và private
-(70% test) còn cao hơn public ~0.007 cho cả 3 bản được chọn.
+**Every decision was made on out-of-fold (OOF) predictions**, never on the public board: 14,000 labelled rows against ~1,800 public
+rows. CV tracked the leaderboard throughout (submission 04: fold 0 0.9708 → public 0.97254; submissions 10–11: OOF ~0.975 → public
+0.9753–0.9756), and the private score came out ~0.007 above public for all three selected submissions.
 
 ![OOF macro F1 step by step](docs/figures/cv_ladder.png)
 
 ---
 
-## 3. Insight
+## 3. Findings
 
-### 3.1 Backbone: mmBERT-base thắng rõ
+### 3.1 Backbone: mmBERT-base wins clearly
 
-Benchmark 8 encoder trên cùng fold 0 (2.800 dòng), cấu hình mặc định:
+Eight encoders on the same fold 0 (2,800 rows), default settings:
 
 ![Backbone benchmark](docs/figures/backbones.png)
 
-mmBERT-base (ModernBERT đa ngôn ngữ) vừa tốt nhất vừa nhanh (~12 phút/fold trên 1 T4). XLM-R-large cần 1 GPU + gradient checkpointing
-mà vẫn thua. Chỉnh siêu tham số (label smoothing, 2 epoch, thêm tag ngôn ngữ, bỏ trọng số lớp) **không** biến thể nào thắng đơn lẻ
-→ dùng chúng làm thành viên ensemble.
+mmBERT-base (multilingual ModernBERT) is both the most accurate and fast (~12 min per fold on one T4). XLM-R-large needs a whole GPU
+and gradient checkpointing and still loses. No hyper-parameter variant (label smoothing, 2 epochs, a language tag, no class weights)
+beats the base model on its own, so the variants became ensemble members instead.
 
-### 3.2 Gần hết lỗi là tiếng Bồ Đào Nha, BENIGN ↔ JAILBREAK
+### 3.2 Almost every error is Portuguese, BENIGN ↔ JAILBREAK
 
 ![Error rate by language](docs/figures/errors_by_language.png)
 
-- 1 model: pt **5,4%** lỗi (340/429 lỗi toàn bộ), fr/it/en ~1,1%. 328/340 lỗi pt là nhầm `BENIGN` ↔ `JAILBREAK`, văn bản 300–3000
-  ký tự, và model **rất tự tin** (trung vị p = 0,99).
-- Mẫu lỗi có dạng nhập vai / kịch bản giả tưởng / "chuyên gia an ninh", nhìn giống kiểu adversarial harmful vs benign của WildJailbreak:
-  hai loại viết cùng phong cách, nhãn phụ thuộc ý định thật sự bên dưới. Đây là việc cần hiểu ngữ nghĩa → lý do dùng LLM.
-- Không phải do cắt văn bản: chỉ 35 câu pt trong test dài hơn 2.000 ký tự.
+- Single model: **5.4%** errors in Portuguese (340 of all 429 errors) against ~1.1% in fr/it/en. 328 of the 340 are `BENIGN` ↔
+  `JAILBREAK` confusions on 300–3,000-character texts, made with **high confidence** (median p = 0.99).
+- The errors are role-play, fiction and "security expert" prompts that look like WildJailbreak's adversarial harmful vs benign pairs:
+  both are written the same way and the label depends on the real intent underneath. That needs semantics, hence the LLM.
+- Truncation is not the cause: only 35 Portuguese test rows are longer than 2,000 characters.
 
-### 3.3 Granite-2B: yếu hơn khi đứng một mình, nhưng bổ sung đúng chỗ
+### 3.3 Granite-2B: weaker alone, complementary where it matters
 
 ![Granite vs mmBERT by language](docs/figures/granite_by_language.png)
 
-Granite kém ensemble ở mọi ngôn ngữ, gần nhất ở pt. Nhưng lỗi của nó **khác** lỗi của mmBERT: trộn 40% Granite **chỉ cho câu pt**
-nâng OOF từ 0.9726 → **0.9759** (11.200 dòng); trộn cho cả ngôn ngữ khác làm giảm. Public: 0.97254 → **0.97530**.
+Granite is below the ensemble in every language, closest in Portuguese, but it makes **different** errors. Blending 40% Granite into
+**Portuguese rows only** lifts OOF from 0.9726 to **0.9759** (11,200 rows); blending it into other languages hurts. Public:
+0.97254 → **0.97530**; that submission went on to score **0.98241 private**.
 
-**LLM fine-tune không ổn định:** 3/8 lần train Granite bị hỏng (fold 2 seed 42: F1 0.37 + xác suất NaN; fold 2 seed 7: 0.63; fold 1 seed 7:
-0.68). Quy tắc: **fold nào OOF F1 < 0.9 thì loại** (`tools/build_final.py` làm tự động).
+**LLM fine-tuning is unstable:** 3 of 8 Granite runs diverged (fold 2 seed 42: F1 0.37 with NaN probabilities; fold 2 seed 7: 0.63;
+fold 1 seed 7: 0.68). Rule: **drop any fold with OOF F1 < 0.9** (`tools/build_final.py` does it automatically).
 
-### 3.4 Những gì giúp được
+### 3.4 What helped
 
-| thay đổi | bằng chứng |
+| change | evidence |
 |---|---|
-| **Ghép nhiều run cùng backbone** (biến thể + seed) | OOF (14k dòng) 1 model 0.9667 → 5 thành viên 0.9718 → 7 thành viên 0.9724 |
-| **argmax thay cho offset lớp tinh chỉnh** | offset nhìn đẹp in-sample nhưng thua khi fit ngoài fold: OOF 0.9649 argmax vs 0.9631 cross-fit |
-| **xling** (tra nhãn bản dịch) | +0.001 OOF; ngưỡng 0.85 (0.78 chọn trên fold 0 hoà vốn trên 14k dòng: sửa 10, làm sai 10) |
-| **Granite cho pt** | +0.0033 OOF, +0.0028 public |
-| Model train 100% dữ liệu cho test | public +0.0036 (bản 12c) nhưng private **thấp hơn** bản 10 (0.98111 < 0.98241) → không phải cải thiện thật |
+| **Combining runs of one backbone** (variants + seeds) | OOF (14k rows): single 0.9667 → 5 members 0.9718 → 7 members 0.9724 |
+| **argmax instead of tuned class offsets** | offsets look better in-sample but lose out-of-fold: OOF 0.9649 argmax vs 0.9631 cross-fitted |
+| **xling** (cross-lingual label lookup) | +0.001 OOF at threshold 0.85 (0.78, picked on fold 0 alone, breaks even on 14k rows: 10 fixed, 10 broken) |
+| **Granite on Portuguese rows** | +0.0033 OOF, +0.0028 public |
+| Models trained on 100% of train (test only) | +0.0036 public (12c), but private **lower** than submission 10 (0.98111 < 0.98241): not a real gain |
 
-### 3.5 Những gì không giúp (đều đo ngoài fold)
+### 3.5 What did not help (all measured out-of-fold)
 
-| thử | kết quả |
+| tried | result |
 |---|---|
-| Thêm encoder khác (wolf, deberta, xlmr, distilbert, mmbert-small) vào ensemble | giảm |
-| TF-IDF trọng số > 0,1 khi ensemble đã mạnh | không tăng, 0,6 → 0.9637 |
-| Offset riêng cho từng ngôn ngữ / chỉ đẩy lớp PI (cross-fit) | 0.9639 < 0.9649 argmax / 0.9741 < 0.9749 argmax |
-| Stacking (logistic regression trên log-prob, theo ngôn ngữ) | 0.9737 / 0.9715 < 0.9745 trọng số tay |
-| Granite chỉ khi ensemble không chắc / chỉ cho quyết định B vs J | 0.9761 / 0.9756 ≈ 0.9759 |
-| Bỏ phiếu giữa các bản dịch trong test (dùng dự đoán) | 0.9734 → 0.9736 (nhiễu) |
-| kNN cùng ngôn ngữ (TF-IDF) | không sửa được gì: ở các câu gần giống nhau model vốn đúng |
-| Trung bình nhân / bỏ phiếu thay trung bình cộng | 0.9721 / 0.9723 vs 0.9724 |
+| Adding other encoders (wolf, deberta, xlmr, distilbert, mmbert-small) | worse |
+| TF-IDF weight above 0.1 once the ensemble is strong | no gain; 0.6 → 0.9637 |
+| Per-language offsets / pushing only the PI class (cross-fitted) | 0.9639 < 0.9649 argmax / 0.9741 < 0.9749 argmax |
+| Stacking (logistic regression on log-probs, per language) | 0.9737 / 0.9715 < 0.9745 hand-set weights |
+| Granite only where the ensemble is unsure / only for the B-vs-J decision | 0.9761 / 0.9756 ≈ 0.9759 |
+| Voting across translations inside test (predictions only) | 0.9734 → 0.9736 (noise) |
+| Same-language kNN (TF-IDF) | fixes nothing: the model is already right on near-duplicates |
+| Geometric mean / majority vote instead of arithmetic mean | 0.9721 / 0.9723 vs 0.9724 |
 
-### 3.6 Bài học vận hành
+### 3.6 Engineering lessons
 
-- **Đừng tin `Trainer.predict` của transformers 5:** trả dự đoán sai thứ tự (XLM-R-large: F1 0.94 trong lúc train, 0.35 OOF) → tự viết
-  vòng suy luận + chặn khi điểm cuối lệch điểm trong train > 0.05.
-- **Split phải giống hệt giữa máy và Kaggle:** `make_folds` dùng `numpy.RandomState`, kiểm tra bằng dấu vân tay (`10a79e50dde8`).
-- **Phiên Kaggle có thể treo vô hạn** (một job kẹt giữ cả phiên, mất output mọi job): runner tự kill job quá 170 phút; log đọc trực
-  tiếp được qua API stream (`kernels_logs_stream`) dù `kaggle kernels logs` trả rỗng khi đang chạy.
-- **Giới hạn 2 phiên/tài khoản (cả CPU):** chạy 2 job/phiên (mỗi T4 một job) và nhờ tài khoản đồng đội chạy notebook dựng sẵn
-  (`kaggle/ready/`).
-- Mỗi bản nộp chỉ khác vài chục nhãn → public (1.800 dòng, ±0,004) không phân biệt được; chọn theo OOF 11–14k dòng.
-  Private xác nhận: bản public cao nhất (12c) không phải bản private cao nhất (10).
+- **Do not trust `Trainer.predict` in transformers 5:** it returned rows out of order (XLM-R-large: F1 0.94 during training, 0.35 OOF).
+  We wrote our own inference loop and fail the run when the final score drops more than 0.05 below the in-training score.
+- **The split must be identical locally and on Kaggle:** `make_folds` uses `numpy.RandomState` and every run records a split
+  fingerprint (`10a79e50dde8`).
+- **Kaggle sessions can hang forever** (one stuck job holds the session and loses every job's output): the runner kills any job after
+  170 minutes, and live logs are read through the API stream (`kernels_logs_stream`) because `kaggle kernels logs` is empty while running.
+- **2 sessions per account, CPU included:** run 2 jobs per session (one per T4), and give teammates ready-made notebooks
+  (`kaggle/ready/`) to run on their own accounts.
+- Submissions differing by a few dozen labels cannot be told apart on the public board (1,800 rows, ±0.004); choose on 11–14k OOF rows.
+  The private board confirmed it: the best public submission (12c) was not the best private one (10).
 
 ---
 
-## 4. Tái lập
+## 4. Reproduce
 
 ```bash
 make setup                     # uv sync + pre-commit
-make data                      # tải dữ liệu cuộc thi vào data/ (cần kaggle.json)
+make data                      # competition data into data/ (needs kaggle.json)
 make check                     # ruff + pytest
 
-# train trên Kaggle: mỗi notebook chạy 2 job song song (1 job / T4), tự kill job treo
+# train on Kaggle: each notebook runs 2 jobs in parallel (one per T4) and kills hung jobs
 uv run python tools/build_kernel.py bench configs/mmbert-base.yaml@0,1,2 configs/mmbert-base.yaml@3,4 --tag my-run
 kaggle kernels push -p kaggle/build/rmit-sgs-gendata-my-run-c1 -t 3600
 kaggle kernels output longquanton/rmit-sgs-gendata-my-run-c1 -p outputs/rmit-sgs-gendata-my-run-c1
 
-uv run rmitguard xling --out artifacts/xling   # láng giềng xuyên ngôn ngữ (mmBERT gốc, ~3 phút trên T4)
-make final                     # ghép → submissions/RMIT_SGS_GenData_C1.csv (khớp từng byte với bản public 0.97913)
+uv run rmitguard xling --out artifacts/xling   # cross-lingual neighbours (pre-trained mmBERT, ~3 min on a T4)
+make final                     # blend → submissions/RMIT_SGS_GenData_C1.csv (byte-identical to the 0.97913 public submission)
 make experiments figures       # experiments/ + docs/figures/
 ```
 
-Cấu hình từng thành viên: `configs/*.yaml` (benchmark), `configs/sweep/` (biến thể, seed, Granite), `configs/single/`
-(train 100% dữ liệu, distill). Notebook dựng sẵn cho đồng đội: `kaggle/ready/` (hướng dẫn ở ô đầu).
+Configs: `configs/*.yaml` (benchmark), `configs/sweep/` (variants, seeds, Granite), `configs/single/` (100%-data and distilled single
+models). Ready-to-run notebooks for teammates: `kaggle/ready/` (instructions in the first cell).
 
 ---
 
-## 5. Cấu trúc repo
+## 5. Repository layout
 
 ```
 src/rmitguard/        package: config, data (split), models (transformer / LLM / TF-IDF), runner (CV + artifacts),
-                      ensemble (trọng số theo ngôn ngữ), xling, postprocess, charts, cli
-tools/                build_kernel (notebook Kaggle) · build_final (bản nộp) · select_final (chấm thành viên trên OOF)
-                      collect_experiments · make_readme_figures · push_when_free / fetch_when_done (hàng chờ phiên Kaggle)
-configs/              mỗi file một thí nghiệm (model phải thuộc danh sách được duyệt, kiểm tra khi load)
-experiments/          mọi run đã chạy: biểu đồ sức khoẻ train, confusion, lỗi theo ngôn ngữ/độ dài, so sánh (README riêng)
-docs/                 PROBLEM.md (đề bài) · WORKFLOW.md (quy trình) · figures/ (biểu đồ README)
-kaggle/ready/         notebook cho thành viên chạy bằng tài khoản riêng
-tests/                unit + end-to-end trên dữ liệu giả
-Plan.md               nhật ký chiến lược theo giờ (tiếng Việt), mọi số liệu và quyết định
+                      ensemble (per-language weights), xling, postprocess, charts, cli
+tools/                build_kernel (Kaggle notebooks) · build_final (final blend) · select_final (score members out-of-fold)
+                      collect_experiments · make_readme_figures · push_when_free / fetch_when_done (Kaggle session queue)
+configs/              one file per experiment (the model must be on the approved list; checked on load)
+experiments/          every run: training-health curves, confusion, errors by language/length, comparisons (own README)
+docs/                 PROBLEM.md (task) · WORKFLOW.md (workflow) · figures/ (README charts)
+kaggle/ready/         notebooks for teammates to run on their own accounts
+tests/                unit + end-to-end tests on synthetic data
 ```
 
-Không commit: dữ liệu cuộc thi, `*.npy`, trọng số, `kaggle.json`, `outputs/`, `artifacts/`, `submissions/` (`.gitignore` + CI kiểm tra).
+Never committed: competition data, `*.npy`, weights, `kaggle.json`, `outputs/`, `artifacts/`, submissions (`.gitignore` + a CI check).
 
 ---
 
-## 6. Bản nộp
+## 6. Submissions
 
-| # | nội dung | public | private |
+| # | change | public | private |
 |---|---|---|---|
-| 02 | 5 mmBERT-base (fold 0) + offset tinh chỉnh | 0.96915 | |
+| 02 | 5 mmBERT-base (fold 0) + tuned offsets | 0.96915 | |
 | 04 | + xling, argmax | 0.97254 | |
-| distill ✓ | **1 mmBERT-base**, distill từ ensemble, 100% train | 0.96514 | 0.97226 |
-| **10 ✓** | **7 mmBERT ×5 fold + TF-IDF + Granite (pt, 2 fold) + xling** | 0.97530 | **0.98241** |
-| 11 | Granite 4 fold | 0.97555 | |
-| 12a | Granite pt 0,45 | 0.97599 | |
-| 12b | Granite chỉ khi ensemble không chắc | 0.97644 | |
-| 12c ✓ | + 2 mmBERT-base train 100% dữ liệu → `RMIT_SGS_GenData_C1.csv` | **0.97913** | 0.98111 |
-| 13 | + 6 model 100% dữ liệu, Granite seed 2 | 0.97824 | |
+| distill ✓ | **single mmBERT-base**, distilled from the ensemble, 100% of train | 0.96514 | 0.97226 |
+| **10 ✓** | **7 mmBERT × 5 folds + TF-IDF + Granite (Portuguese, 2 folds) + xling** | 0.97530 | **0.98241** |
+| 11 | Granite on 4 folds | 0.97555 | |
+| 12a | Granite Portuguese weight 0.45 | 0.97599 | |
+| 12b | Granite only where the ensemble is unsure | 0.97644 | |
+| 12c ✓ | + 2 mmBERT-base trained on 100% of train → `RMIT_SGS_GenData_C1.csv` | **0.97913** | 0.98111 |
+| 13 | + 6 full-data models, Granite seed 2 | 0.97824 | |
 
-✓ = 3 bản chọn để chấm cuối (Kaggle lấy bản private tốt nhất). Private chỉ công bố cho bản được chọn.
+✓ = the three submissions selected for final scoring (Kaggle ranks on the best of them). Private scores are shown only for selected
+submissions.
 
 ---
 
-Team **GenData** · RMIT SGS · RMIT GenAI & Cybersecurity Hackathon 2026.
-Challenge 2 (Tide UNLOCKED) của đội: [RMIT_SGS_GenData_C2](https://github.com/BennedictQuanTon/RMIT_SGS_GenData_C2) — *Unfound*.
+Team **GenData** · RMIT Saigon South · RMIT GenAI & Cybersecurity Hackathon 2026.
+The team's Challenge 2 (Tide UNLOCKED): [RMIT_SGS_GenData_C2](https://github.com/BennedictQuanTon/RMIT_SGS_GenData_C2) — *Unfound*.
